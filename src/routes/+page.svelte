@@ -54,7 +54,9 @@ from vpython import *
 				console.log('In window message:' + JSON.parse(e.data))
 				let obj = JSON.parse(e.data)
 				if (obj.program) {
-					program = obj.program.split('\n').slice(1).join('\n')
+					let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
+					program_lines[0] = '#' + program_lines[0]
+					program = program_lines.join('\n')
 					runMe()
 				}
 			})
