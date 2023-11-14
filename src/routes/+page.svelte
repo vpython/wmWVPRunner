@@ -1,8 +1,32 @@
 <script lang="ts">
 	import { env } from '$env/dynamic/public'
 	import { stdoutStore } from '$lib/stores/stdoutSrc'
-	import { onMount } from 'svelte'
+	import { writable } from 'svelte/store'
 	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
+	import { onMount } from 'svelte'
+
+	let pyodide: any = null
+	let program: string
+	let stdout: HTMLTextAreaElement
+	let scene: any
+	let mounted: boolean = false
+	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.23.3/full/'
+	const screenshotUrl = writable('') //'https://cdn.jsdelivr.net/pyodide/v0.21.0a3/full/',
+
+	let defaultImportCode = `from math import *
+from numpy import arange
+from random import random
+from vpython import *
+`
+
+	const substitutions: (RegExp | string)[][] = [
+		[/[^\.\w\n]rate[\ ]*\(/g, ' await rate('],
+		[/\nrate[\ ]*\(/g, '\nawait rate('],
+		[/scene\.waitfor[\ ]*\(/g, 'await scene.waitfor('],
+		[/[^\.\w\n]get_library[\ ]*\(/g, ' await get_library('],
+		[/\nget_library[\ ]*\(/g, '\nawait get_library(']
+	]
+
 	function redirect_stdout(theText: string) {
 		if (mounted) {
 			stdoutStore.update((val: string) => (val += theText + '\n'))
@@ -14,19 +38,6 @@
 			stdoutStore.update((val: string) => (val += 'stderr:' + theText + '\n'))
 		}
 	}
-
-	let pyodide: any = null
-	let program: string
-	let stdout: HTMLTextAreaElement
-	let scene: any
-	let mounted: boolean = false
-	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.23.3/full/' //'https://cdn.jsdelivr.net/pyodide/v0.21.0a3/full/',
-
-	let defaultImportCode = `from math import *
-from numpy import arange
-from random import random
-from vpython import *
-`
 
 	onMount(async () => {
 		try {
@@ -71,24 +82,17 @@ from vpython import *
 			redirect_stderr('Pyodide not found')
 		}
 	})
-
-	stdoutStore.subscribe((text: string) => {
-		if (stdout) {
-			if (text.length > 0 && stdout.hasAttribute('hidden')) {
-				stdout.removeAttribute('hidden')
-			}
-			stdout.value = text
-			stdout.scrollTop = stdout.scrollHeight
+	function captureScreenshot() {
+		const canvas = document.getElementById('glowscript')
+		if (canvas) {
+			const canvas = document.getElementById('glowscript') as HTMLCanvasElement
+			screenshotUrl.set(canvas.toDataURL())
+			const imageDataUrl = canvas.toDataURL('image/png')
+			screenshotUrl.set(imageDataUrl)
+		} else {
+			console.error('Canvas not found')
 		}
-	})
-
-	const substitutions: (RegExp | string)[][] = [
-		[/[^\.\w\n]rate[\ ]*\(/g, ' await rate('],
-		[/\nrate[\ ]*\(/g, '\nawait rate('],
-		[/scene\.waitfor[\ ]*\(/g, 'await scene.waitfor('],
-		[/[^\.\w\n]get_library[\ ]*\(/g, ' await get_library('],
-		[/\nget_library[\ ]*\(/g, '\nawait get_library(']
-	]
+	}
 
 	async function runMe() {
 		try {
@@ -97,7 +101,6 @@ from vpython import *
 				for (let i = 0; i < substitutions.length; i++) {
 					asyncProgram = asyncProgram.replace(substitutions[i][0], <string>substitutions[i][1])
 				}
-
 				await pyodide.loadPackagesFromImports(defaultImportCode)
 				var result = await pyodide.runPythonAsync(defaultImportCode)
 
@@ -123,3 +126,7 @@ from vpython import *
 
 <div id="glowscript" class="glowscript" />
 <div><textarea bind:this={stdout} rows="10" cols="80" hidden /></div>
+<div>
+    <img src={$screenshotUrl} alt="Screenshot" />
+    <button on:click={captureScreenshot}>Capture Screenshot</button>
+</div>
