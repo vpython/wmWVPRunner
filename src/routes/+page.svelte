@@ -83,14 +83,12 @@ from vpython import *
 		}
 	})
 	function captureScreenshot() {
-		const canvas = document.getElementById('glowscript')
-		if (canvas) {
-			const canvas = document.getElementById('glowscript') as HTMLCanvasElement
-			screenshotUrl.set(canvas.toDataURL())
-			const imageDataUrl = canvas.toDataURL('image/png')
-			screenshotUrl.set(imageDataUrl)
+		const canvasElement = document.getElementById('glowscript')
+		if (canvasElement instanceof HTMLCanvasElement) {
+			const imageDataUrl = canvasElement.toDataURL('image/png')
+			// Now you can use imageDataUrl, e.g., to set it to a Svelte store or an image src
 		} else {
-			console.error('Canvas not found')
+			console.error('The element is not a canvas')
 		}
 	}
 
@@ -127,6 +125,6 @@ from vpython import *
 <div id="glowscript" class="glowscript" />
 <div><textarea bind:this={stdout} rows="10" cols="80" hidden /></div>
 <div>
-    <img src={$screenshotUrl} alt="Screenshot" />
-    <button on:click={captureScreenshot}>Capture Screenshot</button>
+	<img src={$screenshotUrl} alt="Screenshot" />
+	<button on:click={captureScreenshot}>Capture Screenshot</button>
 </div>
