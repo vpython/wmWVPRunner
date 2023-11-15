@@ -124,7 +124,4 @@ from vpython import *
 
 <div id="glowscript" class="glowscript" />
 <div><textarea bind:this={stdout} rows="10" cols="80" hidden /></div>
-<div>
-	<img src={$screenshotUrl} alt="Screenshot" />
-	<button on:click={captureScreenshot}>Capture Screenshot</button>
-</div>
+
