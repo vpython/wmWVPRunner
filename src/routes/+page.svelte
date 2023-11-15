@@ -4,8 +4,6 @@
 	import { writable } from 'svelte/store'
 	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
 	import { onMount } from 'svelte'
-	import { send } from 'vite'
-
 	let pyodide: any = null
 	let program: string
 	let stdout: HTMLTextAreaElement
