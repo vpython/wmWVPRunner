@@ -1,7 +1,7 @@
 <script lang="ts">
 
 	import { stdoutStore } from '$lib/stores/stdoutSrc'
-	import { writable } from 'svelte/store'
+	import { get, writable } from 'svelte/store'
 	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
 	import { onMount } from 'svelte'
 
@@ -38,59 +38,51 @@ from vpython import *
         }
     }
 
-    onMount(async () => {
-        try {
-		
-            scene = await setupGSCanvas()
-            pyodide = await getPyodide(redirect_stdout, redirect_stderr, pyodideURL);
+    onMount(() => {
+        const trustedOrigins = [window.location.origin]; // Define trusted origins
 
-            if (pyodide){
-                window.scene = scene; // @ts-ignore
-                window.__reportScriptError = (err) => {
-                    try {
-                        redirect_stderr('__reportScriptError:' + JSON.stringify(err));
-                    } catch (err) {
-                        redirect_stderr('__reportScriptError: Not sure! Cannot stringify');
-                    }
-                };
+        window.addEventListener('message', (event) => {
+            if (!trustedOrigins.includes(event.origin)) {
+                console.error('Received message from untrusted origin:', event.origin);
+                return;
+            }
 
-                stdoutStore.set('');
-                mounted = true;
+            const messageData = JSON.parse(event.data);
 
-                const trustedOrigins = [window.location.origin]; // Define trusted origins
-			
-                window.addEventListener('message', async (event) => {
-            // Security check: validate event.origin here if needed
-            if (event.data.action === 'captureScreenshot') {
+            if (messageData.action === 'captureScreenshot') {
                 captureScreenshot();
             }
-		});
-	};
-	
-window.addEventListener('message', (e) => {
-	let obj = JSON.parse(e.data);
-	if (obj.program) {
-	let obj = JSON.parse(event.data);
-	if (obj.program) {
-		let program_lines = obj.program.split('\n');
-		program_lines[0] = '#' + program_lines[0]; // Comment out version string
-		program = program_lines.join('\n');
-		runMe();
-	}
-}
-})
+
+            const messageData = JSON.parse(event.data);
+
+            if (messageData.action === 'captureScreenshot') {
+                captureScreenshot();
+            } else if (messageData.program) {
+                program = commentOutVersionString(messageData.program);
+                runMe();
+            }
+        });
+    });
 
 
 
-    function captureScreenshot() {
-        const canvasElement = document.getElementById('glowscript');
-        if (canvasElement instanceof HTMLCanvasElement) {
-            const imageDataUrl = canvasElement.toDataURL('image/png');
-            screenshotUrl.set(imageDataUrl); // Update the Svelte store with the screenshot data URL
-        } else {
-            console.error('The element is not a canvas');
-        }
+	function captureScreenshot() {
+    const canvasElement = document.getElementById('glowscript');
+    if (canvasElement instanceof HTMLCanvasElement) {
+        const imageDataUrl = canvasElement.toDataURL('image/png');
+
+        // Example: POST request to save the screenshot
+        fetch('/api/save-screenshot', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ screenshot: imageDataUrl }),
+        });
+    } else {
+        console.error('Canvas element not found');
     }
+}
 	async function runMe() {
 		try {
 			if (pyodide) {
