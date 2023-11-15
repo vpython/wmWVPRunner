@@ -52,13 +52,8 @@ from vpython import *
             if (messageData.action === 'captureScreenshot') {
                 captureScreenshot();
             }
-
-            const messageData = JSON.parse(event.data);
-
             if (messageData.action === 'captureScreenshot') {
                 captureScreenshot();
-            } else if (messageData.program) {
-                program = commentOutVersionString(messageData.program);
                 runMe();
             }
         });
