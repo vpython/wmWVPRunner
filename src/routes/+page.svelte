@@ -44,48 +44,51 @@ from vpython import *
 		try {
 			scene = await setupGSCanvas()
 			pyodide = await getPyodide(redirect_stdout, redirect_stderr, pyodideURL)
+
+			if (pyodide) {
+				//@ts-ignore
+				window.scene = scene
+				//@ts-ignore
+				window.__reportScriptError = (err) => {
+					try {
+						redirect_stderr('__reportScriptError:' + JSON.stringify(err))
+					} catch (err) {
+						redirect_stderr('__reportScriptError: Not sure! Cannot stringify')
+					}
+					debugger
+				}
+
+				stdoutStore.set('')
+				mounted = true
+
+				window.addEventListener('message', (e) => {
+					console.log('In window message:' + JSON.parse(e.data))
+					let obj = JSON.parse(e.data)
+					if (obj.program) {
+						let program_lines = obj.program.split('\n')
+						program_lines[0] = '#' + program_lines[0]
+						program = program_lines.join('\n')
+						runMe()
+					}
+				})
+
+				try {
+					await captureScreenshot(false, scene)
+				} catch (error) {
+					console.error('Error capturing screenshot:', error)
+				}
+			} else {
+				redirect_stderr('Pyodide not found')
+			}
 		} catch (e) {
 			redirect_stderr(JSON.stringify(e))
 		}
 
-		if (pyodide) {
-			//@ts-ignore
-			window.scene = scene
-			//@ts-ignore
-			window.__reportScriptError = (err) => {
-				try {
-					redirect_stderr('__reportScriptError:' + JSON.stringify(err))
-				} catch (err) {
-					redirect_stderr('__reportScriptError: Not sure! Cannot stringify')
-				}
-				debugger
-			}
-			stdoutStore.set('')
-			mounted = true
-			window.addEventListener('message', (e) => {
-				console.log('In window message:' + JSON.parse(e.data))
-				let obj = JSON.parse(e.data)
-				if (obj.program) {
-					let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
-					program_lines[0] = '#' + program_lines[0]
-					program = program_lines.join('\n')
-					runMe()
-				}
-			})
-
-			function send(msg: string) {
-				msg = JSON.stringify(msg)
-				window.parent.postMessage(msg)
-				window.parent.postMessage(JSON.stringify({ ready: true }), env.PUBLIC_TRUSTED_HOST)
-			}
-
-			return () => {
-				mounted = false
-			}
-		} else {
-			redirect_stderr('Pyodide not found')
+		return () => {
+			mounted = false
 		}
 	})
+
 	async function captureScreenshot(
 		isAuto: boolean,
 		scene: { __renderer: { screenshot: () => Promise<HTMLCanvasElement> } }
@@ -104,7 +107,7 @@ from vpython import *
 			if (cx !== null) {
 				cx.drawImage(img, 0, 0, w, h)
 				var thumbnail = cvs.toDataURL()
-				send({ captureScreenshot: thumbnail, autoscreenshot: isAuto })
+				localStorage.setItem('captureScreenshot', JSON.stringify({ thumbnail, isAuto }));
 			} else {
 				console.error('Could not get the 2D context from the canvas')
 			}
