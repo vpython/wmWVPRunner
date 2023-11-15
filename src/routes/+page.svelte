@@ -67,7 +67,7 @@ from vpython import *
         const imageDataUrl = canvasElement.toDataURL('image/png');
 
         // Example: POST request to save the screenshot
-        fetch('/api/save-screenshot', {
+        fetch('https://improved-halibut-qr577qq9vxqh664w-8080.app.github.dev/src/ide.js', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
