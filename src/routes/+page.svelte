@@ -4,6 +4,7 @@
 	import { writable } from 'svelte/store'
 	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
 	import { onMount } from 'svelte'
+	import { send } from 'vite'
 
 	let pyodide: any = null
 	let program: string
@@ -72,8 +73,11 @@ from vpython import *
 				}
 			})
 
-			console.log('Sending ready message to ' + env.PUBLIC_TRUSTED_HOST)
-			window.parent.postMessage(JSON.stringify({ ready: true }), env.PUBLIC_TRUSTED_HOST)
+			function send(msg: string) {
+				msg = JSON.stringify(msg)
+				window.parent.postMessage(msg)
+				window.parent.postMessage(JSON.stringify({ ready: true }), env.PUBLIC_TRUSTED_HOST)
+			}
 
 			return () => {
 				mounted = false
@@ -82,13 +86,30 @@ from vpython import *
 			redirect_stderr('Pyodide not found')
 		}
 	})
-	function captureScreenshot() {
+	async function captureScreenshot(
+		isAuto: boolean,
+		scene: { __renderer: { screenshot: () => Promise<HTMLCanvasElement> } }
+	) {
 		const canvasElement = document.getElementById('glowscript')
 		if (canvasElement instanceof HTMLCanvasElement) {
-			const imageDataUrl = canvasElement.toDataURL('image/png')
-			// Now you can use imageDataUrl, e.g., to set it to a Svelte store or an image src
+			var img = await scene.__renderer.screenshot()
+			var targetSize = 128
+			var aspect = img.width / img.height
+			var w = aspect >= 1 ? targetSize : targetSize * aspect
+			var h = aspect >= 1 ? targetSize / aspect : targetSize
+			var cvs = document.createElement('canvas')
+			cvs.width = w
+			cvs.height = h
+			var cx = cvs.getContext('2d')
+			if (cx !== null) {
+				cx.drawImage(img, 0, 0, w, h)
+				var thumbnail = cvs.toDataURL()
+				send({ captureScreenshot: thumbnail, autoscreenshot: isAuto })
+			} else {
+				console.error('Could not get the 2D context from the canvas')
+			}
 		} else {
-			console.error('The element is not a canvas')
+			console.error('The element with id "glowscript" is not a canvas')
 		}
 	}
 
@@ -124,4 +145,3 @@ from vpython import *
 
 <div id="glowscript" class="glowscript" />
 <div><textarea bind:this={stdout} rows="10" cols="80" hidden /></div>
-
