@@ -42,7 +42,14 @@ from vpython import *
         const trustedOrigins = [window.location.origin]; // Define trusted origins
 
         window.addEventListener('message', (event) => {
-            if (!trustedOrigins.includes(event.origin)) {
+            let obj = JSON.parse(e.data)
+            if (obj.program) {
+					let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
+					program_lines[0] = '#' + program_lines[0]
+					program = program_lines.join('\n')
+					runMe()
+				}
+        else if (!trustedOrigins.includes(event.origin)) {
                 console.error('Received message from untrusted origin:', event.origin);
                 return;
             }
