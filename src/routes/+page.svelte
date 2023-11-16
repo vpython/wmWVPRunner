@@ -42,7 +42,7 @@ from vpython import *
         const trustedOrigins = [window.location.origin]; // Define trusted origins
 
         window.addEventListener('message', (event) => {
-            let obj = JSON.parse(e.data)
+            let obj = JSON.parse(event.data)
             if (obj.program) {
 					let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
 					program_lines[0] = '#' + program_lines[0]
