@@ -58,26 +58,56 @@ from vpython import *
             }
         });
     });
+	async function captureScreenshot(
+    scene: { __renderer: { screenshot: () => Promise<HTMLCanvasElement> } }
+) {
+    try {
+        // Ensure the canvas element is correctly identified
+        const canvasElement = document.getElementById('glowscript');
+        if (!(canvasElement instanceof HTMLCanvasElement)) {
+            console.error('The element with id "glowscript" is not a canvas');
+            return;
+        }
 
+        // Capture the screenshot using the provided method
+        const img = await scene.__renderer.screenshot();
+        if (!img) {
+            console.error('Failed to capture the screenshot from the scene');
+            return;
+        }
 
+        // Define the target size for the screenshot
+        const targetSize = 128;
+        const aspectRatio = img.width / img.height;
+        const width = aspectRatio >= 1 ? targetSize : targetSize * aspectRatio;
+        const height = aspectRatio >= 1 ? targetSize / aspectRatio : targetSize;
 
-	function captureScreenshot() {
-    const canvasElement = document.getElementById('glowscript');
-    if (canvasElement instanceof HTMLCanvasElement) {
-        const imageDataUrl = canvasElement.toDataURL('image/png');
+        // Create a new canvas to adjust the screenshot size
+        const screenshotCanvas = document.createElement('canvas');
+        screenshotCanvas.width = width;
+        screenshotCanvas.height = height;
 
-        // Example: POST request to save the screenshot
-        fetch('https://improved-halibut-qr577qq9vxqh664w-8080.app.github.dev/src/ide.js', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ screenshot: imageDataUrl }),
-        });
-    } else {
-        console.error('Canvas element not found');
+        const context = screenshotCanvas.getContext('2d');
+        if (!context) {
+            console.error('Could not get the 2D context from the canvas');
+            return;
+        }
+
+        // Draw the image on the new canvas
+        context.drawImage(img, 0, 0, width, height);
+        const thumbnail = screenshotCanvas.toDataURL();
+
+        // Store the captured screenshot in local storage
+        localStorage.setItem('captureScreenshot', JSON.stringify({ thumbnail, isAuto: false }));
+
+    } catch (error) {
+        console.error('Error capturing screenshot:', error);
     }
 }
+
+
+
+	
 	async function runMe() {
 		try {
 			if (pyodide) {
