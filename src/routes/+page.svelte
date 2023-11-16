@@ -48,12 +48,8 @@ from vpython import *
             }
 
             const messageData = JSON.parse(event.data);
-
             if (messageData.action === 'captureScreenshot') {
-                captureScreenshot();
-            }
-            if (messageData.action === 'captureScreenshot') {
-                captureScreenshot();
+                captureScreenshot(scene);
                 runMe();
             }
         });
@@ -104,9 +100,6 @@ from vpython import *
         console.error('Error capturing screenshot:', error);
     }
 }
-
-
-
 	
 	async function runMe() {
 		try {
