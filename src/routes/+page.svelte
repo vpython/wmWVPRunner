@@ -3,6 +3,7 @@
 	import { get, writable } from 'svelte/store'
 	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
 	import { onMount } from 'svelte'
+	import { env } from '$env/dynamic/public'
 
 	let pyodide: any = null
 	let program: string
@@ -54,6 +55,8 @@ from vpython import *
 
 			const messageData = JSON.parse(event.data)
 			if (messageData.action === 'captureScreenshot') {
+                console.log('Sending ready message to ' + env.PUBLIC_TRUSTED_HOST)
+			window.parent.postMessage(JSON.stringify({ ready: true }), env.PUBLIC_TRUSTED_HOST)
 				captureScreenshot(scene)
 				runMe()
 			}
