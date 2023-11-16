@@ -3,6 +3,7 @@
 	import { stdoutStore } from '$lib/stores/stdoutSrc'
 	import { onMount } from 'svelte'
 	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
+	import { PUBLIC_TRUSTED_HOST } from '$env/static/public'
 	function redirect_stdout(theText: string) {
 		if (mounted) {
 			stdoutStore.update((val: string) => (val += theText + '\n'))
@@ -29,6 +30,7 @@ from vpython import *
 `
 
 	onMount(async () => {
+		console.log("Public host =", PUBLIC_TRUSTED_HOST)
 		try {
 			scene = await setupGSCanvas()
 			pyodide = await getPyodide(redirect_stdout, redirect_stderr, pyodideURL)
@@ -61,8 +63,8 @@ from vpython import *
 				}
 			})
 
-			console.log('Sending ready message to ' + env.PUBLIC_TRUSTED_HOST)
-			window.parent.postMessage(JSON.stringify({ ready: true }), env.PUBLIC_TRUSTED_HOST)
+			console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
+			window.parent.postMessage(JSON.stringify({ ready: true }), PUBLIC_TRUSTED_HOST)
 
 			return () => {
 				mounted = false
