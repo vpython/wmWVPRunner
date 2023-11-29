@@ -100,7 +100,7 @@ from vpython import *
 			// Draw the image on the new canvas
 			context.drawImage(img, 0, 0, width, height)
 			const thumbnail = screenshotCanvas.toDataURL()
-
+			send({ screenshot: thumbnail, autoscreenshot: isAuto })
 			// Store the captured screenshot in local storage
 			localStorage.setItem('captureScreenshot', JSON.stringify({ thumbnail, isAuto: false }))
 		} catch (error) {
