@@ -12,7 +12,6 @@
 	let mounted: boolean = false
 	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.23.3/full/'
 	const screenshotUrl = writable('') //'https://cdn.jsdelivr.net/pyodide/v0.21.0a3/full/',
-
 	let defaultImportCode = `from math import *
 from numpy import arange
 from random import random
@@ -25,7 +24,7 @@ from vpython import *
 		[/[^\.\w\n]get_library[\ ]*\(/g, ' await get_library('],
 		[/\nget_library[\ ]*\(/g, '\nawait get_library(']
 	]
-
+	
 	function redirect_stdout(theText: string) {
 		if (mounted) {
 			stdoutStore.update((val: string) => (val += theText + '\n'))
@@ -53,14 +52,11 @@ from vpython import *
 				return
 			}
 
-			const messageData = JSON.parse(event.data)
-			if (messageData.action === 'captureScreenshot') {
+			if (obj.action === 'captureScreenshot') {
                 console.log('Sending ready message to ' + env.PUBLIC_TRUSTED_HOST)
-			window.parent.postMessage(JSON.stringify({ ready: true }), env.PUBLIC_TRUSTED_HOST)
-				captureScreenshot(scene)
-				runMe()
 			}
 		})
+			window.parent.postMessage(JSON.stringify({ ready: true }), env.PUBLIC_TRUSTED_HOST)
 	})
 	async function captureScreenshot(scene: {
 		__renderer: { screenshot: () => Promise<HTMLCanvasElement> }
