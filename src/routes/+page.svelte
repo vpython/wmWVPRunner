@@ -20,6 +20,7 @@
 	let program: string
 	let stdout: HTMLTextAreaElement
 	let scene: any
+	let display: any
 	let mounted: boolean = false
 	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.23.3/full/' //'https://cdn.jsdelivr.net/pyodide/v0.21.0a3/full/',
 
@@ -30,9 +31,9 @@ from vpython import *
 `
 
 	onMount(async () => {
-		console.log("Public host =", PUBLIC_TRUSTED_HOST)
+		console.log('Public host =', PUBLIC_TRUSTED_HOST)
 		try {
-			scene = await setupGSCanvas()
+			;({ scene, display } = await setupGSCanvas())
 			pyodide = await getPyodide(redirect_stdout, redirect_stderr, pyodideURL)
 		} catch (e) {
 			redirect_stderr(JSON.stringify(e))
