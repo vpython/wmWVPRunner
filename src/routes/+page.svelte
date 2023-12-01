@@ -1,30 +1,10 @@
 <script lang="ts">
-	import { stdoutStore } from '$lib/stores/stdoutSrc'
-	import { get, writable } from 'svelte/store'
-	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
-	import { onMount } from 'svelte'
 	import { env } from '$env/dynamic/public'
-
-	let pyodide: any = null
-	let program: string
-	let stdout: HTMLTextAreaElement
-	let scene: any
-	let mounted: boolean = false
-	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.23.3/full/'
-	const screenshotUrl = writable('') //'https://cdn.jsdelivr.net/pyodide/v0.21.0a3/full/',
-	let defaultImportCode = `from math import *
-from numpy import arange
-from random import random
-from vpython import *
-`
-	const substitutions: (RegExp | string)[][] = [
-		[/[^\.\w\n]rate[\ ]*\(/g, ' await rate('],
-		[/\nrate[\ ]*\(/g, '\nawait rate('],
-		[/\nscene\.waitfor[\ ]*\(/g, 'await scene.waitfor('],
-		[/[^\.\w\n]get_library[\ ]*\(/g, ' await get_library('],
-		[/\nget_library[\ ]*\(/g, '\nawait get_library(']
-	]
-	
+	import { stdoutStore } from '$lib/stores/stdoutSrc'
+	import { onMount } from 'svelte'
+	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
+	import { PUBLIC_TRUSTED_HOST } from '$env/static/public'
+	import { object_without_properties } from 'svelte/internal'
 	function redirect_stdout(theText: string) {
 		if (mounted) {
 			stdoutStore.update((val: string) => (val += theText + '\n'))
@@ -37,31 +17,99 @@ from vpython import *
 		}
 	}
 
-	onMount(() => {
-		const trustedOrigins = [window.location.origin] // Define trusted origins
+	let pyodide: any = null
+	let program: string
+	let stdout: HTMLTextAreaElement
+	let scene: any
+	let mounted: boolean = false
+	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.23.3/full/' //'https://cdn.jsdelivr.net/pyodide/v0.21.0a3/full/',
 
-		window.addEventListener('message', (event) => {
-			let obj = JSON.parse(event.data)
-			if (obj.program) {
-				let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
-				program_lines[0] = '#' + program_lines[0]
-				program = program_lines.join('\n')
-				runMe()
-			} else if (!trustedOrigins.includes(event.origin)) {
-				console.error('Received message from untrusted origin:', event.origin)
-				return
-			}
+	let defaultImportCode = `from math import *
+from numpy import arange
+from random import random
+from vpython import *
+`
 
-			if (obj.action === 'captureScreenshot') {
-                console.log('Sending ready message to ' + env.PUBLIC_TRUSTED_HOST)
-			}
-		})
-			window.parent.postMessage(JSON.stringify({ ready: true }), env.PUBLIC_TRUSTED_HOST)
-	})
-	async function captureScreenshot(scene: {
-		__renderer: { screenshot: () => Promise<HTMLCanvasElement> }
-	}) {
+	onMount(async () => {
+		console.log("Public host =", PUBLIC_TRUSTED_HOST)
 		try {
+			scene = await setupGSCanvas()
+			pyodide = await getPyodide(redirect_stdout, redirect_stderr, pyodideURL)
+		} catch (e) {
+			redirect_stderr(JSON.stringify(e))
+		}
+
+		if (pyodide) {
+			//@ts-ignore
+			window.scene = scene
+			//@ts-ignore
+			window.__reportScriptError = (err) => {
+				try {
+					redirect_stderr('__reportScriptError:' + JSON.stringify(err))
+				} catch (err) {
+					redirect_stderr('__reportScriptError: Not sure! Cannot stringify')
+				}
+				debugger
+			}
+			stdoutStore.set('')
+			mounted = true
+			window.addEventListener('message', (e) => {
+				console.log('In window message:' + JSON.parse(e.data))
+				let obj = JSON.parse(e.data)
+				if (obj.program) {
+					let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
+					program_lines[0] = '#' + program_lines[0]
+					program = program_lines.join('\n')
+					runMe()
+				}
+				else if(obj.screenshot)
+				{
+					captureScreenshot();
+				}
+			})
+
+			console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
+			window.parent.postMessage(JSON.stringify({ ready: true }), PUBLIC_TRUSTED_HOST)
+
+			return () => {
+				mounted = false
+			}
+		} else {
+			redirect_stderr('Pyodide not found')
+		}
+	})
+
+	stdoutStore.subscribe((text: string) => {
+		if (stdout) {
+			if (text.length > 0 && stdout.hasAttribute('hidden')) {
+				stdout.removeAttribute('hidden')
+			}
+			stdout.value = text
+			stdout.scrollTop = stdout.scrollHeight
+		}
+	})
+
+	const substitutions: (RegExp | string)[][] = [
+		[/[^\.\w\n]rate[\ ]*\(/g, ' await rate('],
+		[/\nrate[\ ]*\(/g, '\nawait rate('],
+		[/scene\.waitfor[\ ]*\(/g, 'await scene.waitfor('],
+		[/[^\.\w\n]get_library[\ ]*\(/g, ' await get_library('],
+		[/\nget_library[\ ]*\(/g, '\nawait get_library(']
+	]
+	async function captureScreenshot (){
+		try {
+			let stage: any
+        if (!scene.activated) {
+            return
+        }
+        for (var c = 0; c <scene.activated.length; c++) {
+        	var ca = scene.activated[c]
+            if (ca !== null) {
+				stage = ca
+                break
+            }
+        }
+        if (!stage) return
 			// Ensure the canvas element is correctly identified
 			const canvasElement = document.getElementById('glowscript')
 			if (!(canvasElement instanceof HTMLCanvasElement)) {
@@ -70,7 +118,7 @@ from vpython import *
 			}
 
 			// Capture the screenshot using the provided method
-			const img = await scene.__renderer.screenshot()
+			const img = await stage.__renderer.screenshot()
 			if (!img) {
 				console.error('Failed to capture the screenshot from the scene')
 				return
@@ -96,14 +144,12 @@ from vpython import *
 			// Draw the image on the new canvas
 			context.drawImage(img, 0, 0, width, height)
 			const thumbnail = screenshotCanvas.toDataURL()
-			send({ screenshot: thumbnail, autoscreenshot: isAuto })
-			// Store the captured screenshot in local storage
-			localStorage.setItem('captureScreenshot', JSON.stringify({ thumbnail, isAuto: false }))
+			let isAuto = false
+			window.parent.postMessage({ screenshot: thumbnail, autoscreenshot: isAuto })
 		} catch (error) {
 			console.error('Error capturing screenshot:', error)
 		}
 	}
-
 	async function runMe() {
 		try {
 			if (pyodide) {
@@ -111,6 +157,7 @@ from vpython import *
 				for (let i = 0; i < substitutions.length; i++) {
 					asyncProgram = asyncProgram.replace(substitutions[i][0], <string>substitutions[i][1])
 				}
+
 				await pyodide.loadPackagesFromImports(defaultImportCode)
 				var result = await pyodide.runPythonAsync(defaultImportCode)
 
