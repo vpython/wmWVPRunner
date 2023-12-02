@@ -41,5 +41,5 @@ export const setupGSCanvas = async () => {
 	}
 	display = window.canvas
 	scene = display()
-	return scene
+	return { scene, display }
 }

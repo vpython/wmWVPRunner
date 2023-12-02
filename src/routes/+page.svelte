@@ -4,7 +4,6 @@
 	import { onMount } from 'svelte'
 	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
 	import { PUBLIC_TRUSTED_HOST } from '$env/static/public'
-	import { object_without_properties } from 'svelte/internal'
 	function redirect_stdout(theText: string) {
 		if (mounted) {
 			stdoutStore.update((val: string) => (val += theText + '\n'))
@@ -21,6 +20,7 @@
 	let program: string
 	let stdout: HTMLTextAreaElement
 	let scene: any
+	let display: any
 	let mounted: boolean = false
 	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.23.3/full/' //'https://cdn.jsdelivr.net/pyodide/v0.21.0a3/full/',
 
@@ -31,9 +31,9 @@ from vpython import *
 `
 
 	onMount(async () => {
-		console.log("Public host =", PUBLIC_TRUSTED_HOST)
+		console.log('Public host =', PUBLIC_TRUSTED_HOST)
 		try {
-			scene = await setupGSCanvas()
+			;({ scene, display } = await setupGSCanvas())
 			pyodide = await getPyodide(redirect_stdout, redirect_stderr, pyodideURL)
 		} catch (e) {
 			redirect_stderr(JSON.stringify(e))
@@ -61,13 +61,13 @@ from vpython import *
 					program_lines[0] = '#' + program_lines[0]
 					program = program_lines.join('\n')
 					runMe()
-				}
-				else if(obj.screenshot)
-				{
-					captureScreenshot();
+				} else if (obj.screenshot) {
+					captureScreenshot()
 				}
 			})
 
+			console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
+			window.parent.postMessage(JSON.stringify({ ready: true }), PUBLIC_TRUSTED_HOST)
 			console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
 			window.parent.postMessage(JSON.stringify({ ready: true }), PUBLIC_TRUSTED_HOST)
 
@@ -96,20 +96,20 @@ from vpython import *
 		[/[^\.\w\n]get_library[\ ]*\(/g, ' await get_library('],
 		[/\nget_library[\ ]*\(/g, '\nawait get_library(']
 	]
-	async function captureScreenshot (){
+	async function captureScreenshot() {
 		try {
 			let stage: any
-        if (!scene.activated) {
-            return
-        }
-        for (var c = 0; c <scene.activated.length; c++) {
-        	var ca = scene.activated[c]
-            if (ca !== null) {
-				stage = ca
-                break
-            }
-        }
-        if (!stage) return
+			if (!display.activated) {
+				return
+			}
+			for (var c = 0; c < display.activated.length; c++) {
+				var ca = display.activated[c]
+				if (ca !== null) {
+					stage = ca
+					break
+				}
+			}
+			if (!stage) return
 			// Ensure the canvas element is correctly identified
 			const canvasElement = document.getElementById('glowscript')
 			if (!(canvasElement instanceof HTMLCanvasElement)) {
