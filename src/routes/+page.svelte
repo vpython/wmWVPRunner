@@ -68,8 +68,7 @@ from vpython import *
 
 			console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
 			window.parent.postMessage(JSON.stringify({ ready: true }), PUBLIC_TRUSTED_HOST)
-			console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
-			window.parent.postMessage(JSON.stringify({ ready: true }), PUBLIC_TRUSTED_HOST)
+			
 
 			return () => {
 				mounted = false
@@ -140,7 +139,7 @@ from vpython import *
 			context.drawImage(img, 0, 0, width, height)
 			const thumbnail = screenshotCanvas.toDataURL()
 			let isAuto = false
-			window.parent.postMessage({ screenshot: thumbnail, autoscreenshot: isAuto })
+			window.parent.postMessage(JSON.stringify({ screenshot: thumbnail, autoscreenshot: isAuto}), PUBLIC_TRUSTED_HOST)
 		} catch (error) {
 			console.error('Error capturing screenshot:', error)
 		}
