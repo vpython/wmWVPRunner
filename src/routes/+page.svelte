@@ -110,12 +110,7 @@ from vpython import *
 				}
 			}
 			if (!stage) return
-			// Ensure the canvas element is correctly identified
-			const canvasElement = document.getElementById('glowscript')
-			if (!(canvasElement instanceof HTMLCanvasElement)) {
-				console.error('The element with id "glowscript" is not a canvas')
-				return
-			}
+			
 
 			// Capture the screenshot using the provided method
 			const img = await stage.__renderer.screenshot()
