@@ -61,11 +61,14 @@ from vpython import *
 					program_lines[0] = '#' + program_lines[0]
 					program = program_lines.join('\n')
 					runMe()
+				} else if (obj.screenshot) {
+					captureScreenshot()
 				}
 			})
 
 			console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
 			window.parent.postMessage(JSON.stringify({ ready: true }), PUBLIC_TRUSTED_HOST)
+			
 
 			return () => {
 				mounted = false
@@ -92,7 +95,55 @@ from vpython import *
 		[/[^\.\w\n]get_library[\ ]*\(/g, ' await get_library('],
 		[/\nget_library[\ ]*\(/g, '\nawait get_library(']
 	]
+	async function captureScreenshot() {
+		try {
+			let stage: any
+			if (!display.activated) {
+				return
+			}
+			for (var c = 0; c < display.activated.length; c++) {
+				var ca = display.activated[c]
+				if (ca !== null) {
+					stage = ca
+					break
+				}
+			}
+			if (!stage) return
+			
 
+			// Capture the screenshot using the provided method
+			const img = await stage.__renderer.screenshot()
+			if (!img) {
+				console.error('Failed to capture the screenshot from the scene')
+				return
+			}
+
+			// Define the target size for the screenshot
+			const targetSize = 128
+			const aspectRatio = img.width / img.height
+			const width = aspectRatio >= 1 ? targetSize : targetSize * aspectRatio
+			const height = aspectRatio >= 1 ? targetSize / aspectRatio : targetSize
+
+			// Create a new canvas to adjust the screenshot size
+			const screenshotCanvas = document.createElement('canvas')
+			screenshotCanvas.width = width
+			screenshotCanvas.height = height
+
+			const context = screenshotCanvas.getContext('2d')
+			if (!context) {
+				console.error('Could not get the 2D context from the canvas')
+				return
+			}
+
+			// Draw the image on the new canvas
+			context.drawImage(img, 0, 0, width, height)
+			const thumbnail = screenshotCanvas.toDataURL()
+			let isAuto = false
+			window.parent.postMessage(JSON.stringify({ screenshot: thumbnail, autoscreenshot: isAuto}), PUBLIC_TRUSTED_HOST)
+		} catch (error) {
+			console.error('Error capturing screenshot:', error)
+		}
+	}
 	async function runMe() {
 		try {
 			if (pyodide) {
