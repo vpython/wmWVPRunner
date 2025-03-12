@@ -39,50 +39,49 @@ from vpython import *
 
 	onMount(async () => {
 		console.log('Public host =', PUBLIC_TRUSTED_HOST)
-		try {
-			;({ scene, display } = await setupGSCanvas())
-			pyodide = await getPyodide(redirect_stdout, redirect_stderr, pyodideURL)
-		} catch (e) {
-			redirect_stderr(JSON.stringify(e))
-		}
+		mounted = true
+		window.addEventListener('message', (e) => {
+			console.log('In window message:' + JSON.parse(e.data))
+			let obj = JSON.parse(e.data)
+			if (obj.program) {
+				let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
+				program_lines[0] = '#' + program_lines[0]
+				program = program_lines.join('\n')
+				addScript(`https://www.glowscript.org/package/glow.${obj.version}.min.js`, async () => {
+					try {
+						;({ scene, display } = await setupGSCanvas())
+						pyodide = await getPyodide(redirect_stdout, redirect_stderr, pyodideURL)
+					} catch (e) {
+						redirect_stderr(JSON.stringify(e))
+					}
 
-		if (pyodide) {
-			//@ts-ignore
-			window.scene = scene
-			//@ts-ignore
-			window.__reportScriptError = (err) => {
-				try {
-					redirect_stderr('__reportScriptError:' + JSON.stringify(err))
-				} catch (err) {
-					redirect_stderr('__reportScriptError: Not sure! Cannot stringify')
-				}
-				debugger
-			}
-			stdoutStore.set('')
-			mounted = true
-			window.addEventListener('message', (e) => {
-				console.log('In window message:' + JSON.parse(e.data))
-				let obj = JSON.parse(e.data)
-				if (obj.program) {
-					let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
-					program_lines[0] = '#' + program_lines[0]
-					program = program_lines.join('\n')
-					addScript(`https://www.glowscript.org/package/glow.${obj.version}.min.js`, () => {
+					if (pyodide) {
+						//@ts-ignore
+						window.scene = scene
+						//@ts-ignore
+						window.__reportScriptError = (err) => {
+							try {
+								redirect_stderr('__reportScriptError:' + JSON.stringify(err))
+							} catch (err) {
+								redirect_stderr('__reportScriptError: Not sure! Cannot stringify')
+							}
+							debugger
+						}
+						stdoutStore.set('')
+
 						runMe()
-					})
-				} else if (obj.screenshot) {
-					captureScreenshot()
-				}
-			})
-
-			console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
-			window.parent.postMessage(JSON.stringify({ ready: true }), PUBLIC_TRUSTED_HOST)
-
-			return () => {
-				mounted = false
+					}
+				})
+			} else if (obj.screenshot) {
+				captureScreenshot()
 			}
-		} else {
-			redirect_stderr('Pyodide not found')
+		})
+
+		console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
+		window.parent.postMessage(JSON.stringify({ ready: true }), PUBLIC_TRUSTED_HOST)
+
+		return () => {
+			mounted = false
 		}
 	})
 
