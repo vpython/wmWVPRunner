@@ -22,7 +22,7 @@
 	let scene: any
 	let display: any
 	let mounted: boolean = false
-	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.23.3/full/' //'https://cdn.jsdelivr.net/pyodide/v0.21.0a3/full/',
+	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.27.3/full/' //'https://cdn.jsdelivr.net/pyodide/v0.21.0a3/full/',
 
 	let defaultImportCode = `from math import *
 from numpy import arange
