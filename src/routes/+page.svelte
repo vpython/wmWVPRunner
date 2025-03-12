@@ -30,6 +30,13 @@ from random import random
 from vpython import *
 `
 
+	function addScript(src: string, callback: () => void) {
+		var s = document.createElement('script')
+		s.setAttribute('src', src)
+		s.onload = callback
+		document.body.appendChild(s)
+	}
+
 	onMount(async () => {
 		console.log('Public host =', PUBLIC_TRUSTED_HOST)
 		try {
@@ -60,7 +67,9 @@ from vpython import *
 					let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
 					program_lines[0] = '#' + program_lines[0]
 					program = program_lines.join('\n')
-					runMe()
+					addScript(`https://www.glowscript.org/package/glow.${obj.version}.min.js`, () => {
+						runMe()
+					})
 				} else if (obj.screenshot) {
 					captureScreenshot()
 				}
@@ -68,7 +77,6 @@ from vpython import *
 
 			console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
 			window.parent.postMessage(JSON.stringify({ ready: true }), PUBLIC_TRUSTED_HOST)
-			
 
 			return () => {
 				mounted = false
@@ -109,7 +117,6 @@ from vpython import *
 				}
 			}
 			if (!stage) return
-			
 
 			// Capture the screenshot using the provided method
 			const img = await stage.__renderer.screenshot()
@@ -139,7 +146,10 @@ from vpython import *
 			context.drawImage(img, 0, 0, width, height)
 			const thumbnail = screenshotCanvas.toDataURL()
 			let isAuto = false
-			window.parent.postMessage(JSON.stringify({ screenshot: thumbnail, autoscreenshot: isAuto}), PUBLIC_TRUSTED_HOST)
+			window.parent.postMessage(
+				JSON.stringify({ screenshot: thumbnail, autoscreenshot: isAuto }),
+				PUBLIC_TRUSTED_HOST
+			)
 		} catch (error) {
 			console.error('Error capturing screenshot:', error)
 		}
