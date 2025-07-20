@@ -41,6 +41,19 @@ from vpython import *
 		console.log('Public host =', PUBLIC_TRUSTED_HOST)
 		mounted = true
 		window.addEventListener('message', (e) => {
+			//console.log('In window message:', e)
+			if (e.origin !== PUBLIC_TRUSTED_HOST.slice(0, e.origin.length)) {
+				//console.warn('Received message from untrusted origin:', e.origin)
+				return
+			}
+			if (!e.data) {
+				console.warn('Received empty message')
+				return
+			}
+			if (typeof e.data !== 'string') {
+				console.warn('Received message that is not a string:', e.data)
+				return
+			}
 			console.log('In window message:' + JSON.parse(e.data))
 			let obj = JSON.parse(e.data)
 			if (obj.program) {
