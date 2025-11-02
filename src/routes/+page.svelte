@@ -24,11 +24,25 @@
 	let mounted: boolean = false
 	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.28.3/full/' //'https://cdn.jsdelivr.net/pyodide/v0.21.0a3/full/',
 
-	let defaultImportCode = `from math import *
-from numpy import arange
-from random import random
-from vpython import *
-`
+	// Split imports into individual statements to reduce stack depth in Chrome
+	let mathImportCode = `from math import *`
+	let numpyImportCode = `from numpy import arange`
+	let randomImportCode = `from random import random`
+
+	// Pre-import vpython submodules individually to break up the import chain
+	// Import in reverse dependency order (deepest dependencies first)
+	let vpythonPreImports = [
+		`import colorsys`,  // Standard library used by color
+		`import vpython.vector`,  // Base vector class
+		`import vpython.vec_js`,  // Depends on vector and js.vec
+		`import vpython.color`,  // Depends on vec_js
+		`import vpython.shapespaths_orig`,  // Depends on vec_js and vector
+		`import vpython.core_funcs`  // Depends on vec_js and shapes
+	]
+
+	// Final imports
+	let vpythonImportCode = `import vpython`
+	let vpythonStarImportCode = `from vpython import *`
 
 	function addScript(src: string, callback: () => void) {
 		var s = document.createElement('script')
@@ -38,6 +52,9 @@ from vpython import *
 	}
 
 	onMount(async () => {
+		console.log('=== wmWVPRunner v1.1.0 - restored working version ===')
+		console.log('Works in: Firefox, Safari, Chrome with DevTools open')
+		console.log('Known issue: Chrome with DevTools closed (Pyodide bug)')
 		console.log('Public host =', PUBLIC_TRUSTED_HOST)
 		mounted = true
 		window.addEventListener('message', (e) => {
@@ -169,13 +186,57 @@ from vpython import *
 	async function runMe() {
 		try {
 			if (pyodide) {
+				const t0 = performance.now()
+				console.log(`[${t0.toFixed(2)}ms] runMe() started`)
+
 				let asyncProgram = program
 				for (let i = 0; i < substitutions.length; i++) {
 					asyncProgram = asyncProgram.replace(substitutions[i][0], <string>substitutions[i][1])
 				}
 
-				await pyodide.loadPackagesFromImports(defaultImportCode)
-				var result = await pyodide.runPythonAsync(defaultImportCode)
+				// Import modules ONE AT A TIME to avoid Chrome V8 stack overflow
+				let t = performance.now()
+
+				console.log(`[${t.toFixed(2)}ms] Importing math...`)
+				await pyodide.runPythonAsync(mathImportCode)
+				let tPrev = t
+				t = performance.now()
+				console.log(`[${t.toFixed(2)}ms] (+${(t-tPrev).toFixed(2)}ms) math imported`)
+
+				// Add delay before numpy to prevent Chrome V8 stack overflow
+				console.log(`[${t.toFixed(2)}ms] Waiting 200ms before numpy...`)
+				await new Promise(resolve => setTimeout(resolve, 200))
+				tPrev = t
+				t = performance.now()
+				console.log(`[${t.toFixed(2)}ms] (+${(t-tPrev).toFixed(2)}ms) Delay complete`)
+
+				console.log(`[${t.toFixed(2)}ms] SKIPPING numpy pre-import - will load on-demand`)
+				// Skip numpy import here - it will be imported by user program if needed
+				// This avoids the Chrome V8 stack overflow during initial setup
+
+				console.log(`[${t.toFixed(2)}ms] Importing random...`)
+				await pyodide.runPythonAsync(randomImportCode)
+				tPrev = t
+				t = performance.now()
+				console.log(`[${t.toFixed(2)}ms] (+${(t-tPrev).toFixed(2)}ms) random imported`)
+
+				// Import vpython - NOTE: This works in Firefox/Safari and Chrome with DevTools open
+				// Known issue: Crashes in Chrome with DevTools closed due to Pyodide+Chrome V8 bug
+				console.log(`[${t.toFixed(2)}ms] Importing vpython...`)
+				try {
+					await pyodide.runPythonAsync(vpythonStarImportCode)
+					tPrev = t
+					t = performance.now()
+					console.log(`[${t.toFixed(2)}ms] (+${(t-tPrev).toFixed(2)}ms) vpython imported successfully`)
+				} catch (e) {
+					tPrev = t
+					t = performance.now()
+					console.log(`[${t.toFixed(2)}ms] ERROR: vpython import failed:`, e.message)
+					console.log(`[${t.toFixed(2)}ms] If using Chrome, try opening DevTools (F12) or use Firefox/Safari`)
+					throw e
+				}
+
+				var result = null
 
 				let foundTextConstructor = asyncProgram.match(/[^\.\w]text[\ ]*\(/)
 				if (foundTextConstructor) {
