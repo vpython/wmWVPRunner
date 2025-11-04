@@ -22,27 +22,14 @@
 	let scene: any
 	let display: any
 	let mounted: boolean = false
-	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.28.3/full/' //'https://cdn.jsdelivr.net/pyodide/v0.21.0a3/full/',
+	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.23.3/full/'
 
-	// Split imports into individual statements to reduce stack depth in Chrome
+	// Standard library imports
 	let mathImportCode = `from math import *`
-	let numpyImportCode = `from numpy import arange`
 	let randomImportCode = `from random import random`
 
-	// Pre-import vpython submodules individually to break up the import chain
-	// Import in reverse dependency order (deepest dependencies first)
-	let vpythonPreImports = [
-		`import colorsys`,  // Standard library used by color
-		`import vpython.vector`,  // Base vector class
-		`import vpython.vec_js`,  // Depends on vector and js.vec
-		`import vpython.color`,  // Depends on vec_js
-		`import vpython.shapespaths_orig`,  // Depends on vec_js and vector
-		`import vpython.core_funcs`  // Depends on vec_js and shapes
-	]
-
-	// Final imports
-	let vpythonImportCode = `import vpython`
-	let vpythonStarImportCode = `from vpython import *`
+	// Import vpython
+	let vpythonImportCode = `from vpython import *`
 
 	function addScript(src: string, callback: () => void) {
 		var s = document.createElement('script')
@@ -52,9 +39,8 @@
 	}
 
 	onMount(async () => {
-		console.log('=== wmWVPRunner v1.1.0 - restored working version ===')
-		console.log('Works in: Firefox, Safari, Chrome with DevTools open')
-		console.log('Known issue: Chrome with DevTools closed (Pyodide bug)')
+		console.log('=== wmWVPRunner v2.0.2 - Using Pyodide v0.23.3 (last known working) ===')
+		console.log('Newer Pyodide versions cause Chrome stack overflow with vpython.vector')
 		console.log('Public host =', PUBLIC_TRUSTED_HOST)
 		mounted = true
 		window.addEventListener('message', (e) => {
@@ -194,7 +180,7 @@
 					asyncProgram = asyncProgram.replace(substitutions[i][0], <string>substitutions[i][1])
 				}
 
-				// Import modules ONE AT A TIME to avoid Chrome V8 stack overflow
+				// Import standard libraries and vpython
 				let t = performance.now()
 
 				console.log(`[${t.toFixed(2)}ms] Importing math...`)
@@ -203,38 +189,17 @@
 				t = performance.now()
 				console.log(`[${t.toFixed(2)}ms] (+${(t-tPrev).toFixed(2)}ms) math imported`)
 
-				// Add delay before numpy to prevent Chrome V8 stack overflow
-				console.log(`[${t.toFixed(2)}ms] Waiting 200ms before numpy...`)
-				await new Promise(resolve => setTimeout(resolve, 200))
-				tPrev = t
-				t = performance.now()
-				console.log(`[${t.toFixed(2)}ms] (+${(t-tPrev).toFixed(2)}ms) Delay complete`)
-
-				console.log(`[${t.toFixed(2)}ms] SKIPPING numpy pre-import - will load on-demand`)
-				// Skip numpy import here - it will be imported by user program if needed
-				// This avoids the Chrome V8 stack overflow during initial setup
-
 				console.log(`[${t.toFixed(2)}ms] Importing random...`)
 				await pyodide.runPythonAsync(randomImportCode)
 				tPrev = t
 				t = performance.now()
 				console.log(`[${t.toFixed(2)}ms] (+${(t-tPrev).toFixed(2)}ms) random imported`)
 
-				// Import vpython - NOTE: This works in Firefox/Safari and Chrome with DevTools open
-				// Known issue: Crashes in Chrome with DevTools closed due to Pyodide+Chrome V8 bug
 				console.log(`[${t.toFixed(2)}ms] Importing vpython...`)
-				try {
-					await pyodide.runPythonAsync(vpythonStarImportCode)
-					tPrev = t
-					t = performance.now()
-					console.log(`[${t.toFixed(2)}ms] (+${(t-tPrev).toFixed(2)}ms) vpython imported successfully`)
-				} catch (e) {
-					tPrev = t
-					t = performance.now()
-					console.log(`[${t.toFixed(2)}ms] ERROR: vpython import failed:`, e.message)
-					console.log(`[${t.toFixed(2)}ms] If using Chrome, try opening DevTools (F12) or use Firefox/Safari`)
-					throw e
-				}
+				await pyodide.runPythonAsync(vpythonImportCode)
+				tPrev = t
+				t = performance.now()
+				console.log(`[${t.toFixed(2)}ms] (+${(t-tPrev).toFixed(2)}ms) vpython imported`)
 
 				var result = null
 

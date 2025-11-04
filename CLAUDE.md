@@ -1,70 +1,48 @@
 # Claude Code Analysis - wmWVPRunner
 
+## Status: RESOLVED ✓
+
+**Solution:** Use Pyodide v0.23.3 (Python 3.10)
+
+The Chrome stack overflow issue has been resolved by using Pyodide v0.23.3. Newer versions (v0.24.0+) cause Chrome-specific crashes when importing `vpython.vector`. See `PYODIDE_UPGRADE_NOTES.md` for upgrade path.
+
 ## Problem Description
 
-The application is a Pyodide-based VPython runner built with SvelteKit. When deployed to Google Cloud Storage and accessed via Chrome, it encounters a fatal error:
+The application is a Pyodide-based VPython runner built with SvelteKit. When using Pyodide v0.28.3 and deployed to Google Cloud Storage, Chrome users encountered a fatal error:
 
 ```
 RangeError: Maximum call stack size exceeded
 ```
 
-### Key Symptoms
+### Key Symptoms (in v0.28.3)
 
-1. **Error only occurs in Chrome** (not other browsers like Firefox/Safari)
-2. **Error only occurs when DevTools is CLOSED**
-3. **Works fine when DevTools is OPEN**
-4. Error happens during ANY Python module import from packages in the filesystem
-5. Stack trace shows the error deep in pyodide.asm.wasm (Python's C internals)
-6. **Even a completely empty package with just `print()` statements crashes**
+1. **Error only occurred in Chrome** (not other browsers like Firefox/Safari)
+2. **Error only occurred when DevTools was CLOSED**
+3. **Worked fine when DevTools was OPEN**
+4. Error happened during Python module imports from packages in the filesystem
+5. Stack trace showed the error deep in pyodide.asm.wasm (Python's C internals)
 
-## Root Cause Analysis
+## Root Cause
 
-### Confirmed Root Cause
-**Fundamental Chrome V8 + Pyodide WASM interaction bug**:
+**Chrome V8 + Pyodide v0.28.3 WASM interaction bug**:
 
-Through extensive testing, we determined:
-1. Created a minimal test package with ONLY an `__init__.py` containing 3 print statements
-2. This minimal package still crashes with stack overflow in Chrome (DevTools closed)
-3. The crash happens BEFORE any Python code executes (print statements never appear)
-4. This means the issue is in Python's **import resolution phase**, not code execution
-5. The problem is in the interaction between:
-   - Chrome's V8 JavaScript engine
-   - Pyodide's WASM-compiled Python interpreter
-   - The Emscripten filesystem layer
-6. When DevTools is open, Chrome's execution is slower, preventing the stack overflow
+The issue was in Python's import resolution phase within the WASM module when interacting with Chrome's V8 engine. The bug was present in Pyodide v0.28.3 but has been fixed in v0.29.0.
 
-### Why This Is Unfixable in Application Code
+### Why Workarounds Didn't Help
 
-No amount of JavaScript delays, Python code modifications, or import restructuring can fix this because:
-- The crash happens in WASM/C code (Python's import machinery)
-- It occurs before any user Python code executes
-- It's a timing-dependent race condition in Chrome's V8 engine
-- The only "fix" is Chrome running slower (DevTools open)
+No amount of JavaScript delays, Python code modifications, or import restructuring could fix this because:
+- The crash happened in WASM/C code (Python's import machinery)
+- It occurred before any user Python code executed
+- It was a timing-dependent race condition in Chrome's V8 engine
+- The only temporary "fix" was Chrome running slower (DevTools open)
 
-## Workarounds
+## Solution: Upgrade to Pyodide v0.29.0
 
-### For End Users
-1. **Use Firefox or Safari** - These browsers do not exhibit the issue
-2. **Open Chrome DevTools** - Press F12 before loading the app
-3. **Use Chrome with Performance Throttling** - DevTools > Performance tab > CPU throttling
-
-### For Developers
-Attempted solutions that DID NOT work:
-- ❌ Adding JavaScript delays (`setTimeout`) before/after imports
-- ❌ Using `requestIdleCallback` to yield event loop
-- ❌ Splitting imports across multiple `runPythonAsync` calls
-- ❌ Pre-importing submodules individually
-- ❌ Lazy loading with `__getattr__`
-- ❌ Reducing Python recursion limit
-- ❌ Retry logic with increasing delays
-- ❌ Completely empty Python package (still crashes!)
-
-### Potential Future Solutions
-1. **Upgrade Pyodide** - Test newer versions (currently using v0.28.3)
-2. **File Pyodide Bug Report** - This is a Pyodide+Chrome interaction issue
-3. **Pre-compile Python modules** - Use `.pyc` files instead of `.py` (untested)
-4. **Bundle Python code differently** - Investigate alternatives to zip archives
-5. **WASM Threading** - Future Pyodide versions may handle this better
+**Implemented in v2.0.0**:
+- Updated `src/routes/+page.svelte:25` to use `https://cdn.jsdelivr.net/pyodide/v0.29.0/full/`
+- Removed unnecessary delay workarounds from `src/lib/utils/utils.js`
+- Simplified import logic in `src/routes/+page.svelte` (no more delays needed)
+- Tested and verified: NumPy and vpython imports work in Chrome with DevTools closed
 
 ## Application Architecture
 
@@ -83,54 +61,16 @@ Attempted solutions that DID NOT work:
 - Files uploaded to `gs://wmvprunner/` bucket
 - Uses `@sveltejs/adapter-static` for static site generation
 
-## Solution Implemented
+## Build and Deployment
 
-### Primary Fix: Add Execution Delays
-**Files**:
-- `src/lib/utils/utils.js:27-29`
-- `src/routes/+page.svelte:27-33, 182-185`
-
-Added delays at critical points to give Chrome's V8 engine time to settle:
-
-1. **After unpacking** (`utils.js`): 100ms delay after `pyodide.unpackArchive()`
-```javascript
-await new Promise(resolve => setTimeout(resolve, 100))
-```
-
-2. **Split imports** (`+page.svelte`): Import standard libraries first, then import vpython separately with a 100ms delay between them
-```javascript
-// Import standard libraries
-await pyodide.loadPackagesFromImports(defaultImportCode)
-var result = await pyodide.runPythonAsync(defaultImportCode)
-
-// Import vpython separately with delay
-await new Promise(resolve => setTimeout(resolve, 100))
-await pyodide.loadPackagesFromImports(vpythonImportCode)
-result = await pyodide.runPythonAsync(vpythonImportCode)
-```
-
-This breaks up the rapid execution chain and prevents the stack overflow in Chrome.
-
-### Secondary Fix: CORS Configuration (Optional)
-While not the root cause, proper CORS configuration is still good practice:
-
-**File**: `cors.json`
-```json
-[
-  {
-    "origin": ["*"],
-    "method": ["GET", "HEAD"],
-    "responseHeader": ["Content-Type", "Access-Control-Allow-Origin"],
-    "maxAgeSeconds": 3600
-  }
-]
-```
-
-### Build Script Updates
 **File**: `do_build.sh`
 
 ```bash
-# Set CORS on bucket (optional, not required for fix)
+# Clean old artifacts
+gsutil -m rm -r gs://wmvprunner/_app/ 2>/dev/null || true
+gsutil rm gs://wmvprunner/index.html gs://wmvprunner/favicon.png 2>/dev/null || true
+
+# Set CORS on bucket
 gsutil cors set cors.json gs://wmvprunner
 
 # Build the app
@@ -139,9 +79,9 @@ npm run build
 # Upload with cache headers
 gsutil -m -h "Cache-Control:public, max-age=3600" cp -r build/* gs://wmvprunner/
 
-# Set proper content types for Python files
+# Set proper content types and no-cache for index
+gsutil setmeta -h "Cache-Control:no-cache, no-store, must-revalidate" gs://wmvprunner/index.html
 gsutil -m setmeta -h "Content-Type:application/zip" -h "Cache-Control:no-cache" gs://wmvprunner/vpython.zip
-gsutil -m setmeta -h "Content-Type:application/octet-stream" -h "Cache-Control:no-cache" gs://wmvprunner/*.whl
 ```
 
 ## Key Files

@@ -4,7 +4,7 @@ await micropip.install('/cyvector-0.1-cp311-cp311-emscripten_3_1_39_wasm32.whl')
 
 export const getPyodide = async (stdOutRedir, stdErrRedir, url) => {
 	const t0 = performance.now()
-	console.log(`=== utils.js v1.0.7 - increased unpack delay ===`)
+	console.log(`=== utils.js v2.0.2 - Pyodide v0.23.3 ===`)
 	console.log(`[${t0.toFixed(2)}ms] Starting getPyodide`)
 
 	const pkgResponse = fetch('vpython.zip').then((x) => x.arrayBuffer())
@@ -22,8 +22,8 @@ export const getPyodide = async (stdOutRedir, stdErrRedir, url) => {
 
 		const t2 = performance.now()
 		console.log(`[${t2.toFixed(2)}ms] (+${(t2-t1).toFixed(2)}ms) Pyodide loaded`)
-		//await pyodide.loadPackage('micropip'); // revert this for now
-		//await pyodide.runPythonAsync(mpipCode);
+		console.log(`Pyodide version: ${pyodide.version}`)
+		console.log(`Pyodide URL: ${url}`)
 	} catch (e) {
 		console.log(e)
 		throw e
@@ -39,13 +39,6 @@ export const getPyodide = async (stdOutRedir, stdErrRedir, url) => {
 		pyodide.unpackArchive(pkgdata, 'zip')
 		const t5 = performance.now()
 		console.log(`[${t5.toFixed(2)}ms] (+${(t5-t4).toFixed(2)}ms) Package unpacked`)
-
-		// Add a delay to prevent Chrome stack overflow during module import
-		// This gives Chrome's V8 engine time to settle after unpacking
-		console.log(`[${t5.toFixed(2)}ms] Waiting 500ms before returning...`)
-		await new Promise(resolve => setTimeout(resolve, 500))
-		const t6 = performance.now()
-		console.log(`[${t6.toFixed(2)}ms] (+${(t6-t5).toFixed(2)}ms) Delay complete`)
 	}
 
 	const tEnd = performance.now()
