@@ -1,0 +1,4 @@
+out/
+webview/
+node_modules/
+*.vsix

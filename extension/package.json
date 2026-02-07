@@ -1,0 +1,43 @@
+{
+	"name": "wmvprunner-vscode",
+	"displayName": "VPython Runner",
+	"description": "Run VPython (GlowScript) programs in a VSCode webview using Pyodide",
+	"version": "0.1.0",
+	"publisher": "wmvprunner",
+	"engines": {
+		"vscode": "^1.85.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [],
+	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "wmvprunner.runVPython",
+				"title": "Run VPython Program",
+				"icon": "$(play)"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "wmvprunner.runVPython",
+				"key": "ctrl+shift+v",
+				"mac": "cmd+shift+v",
+				"when": "editorLangId == python"
+			}
+		]
+	},
+	"scripts": {
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"package": "vsce package",
+		"test": "vitest run"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.85.0",
+		"typescript": "^5.0.0",
+		"vitest": "^4.0.18"
+	}
+}

@@ -7,7 +7,10 @@ export const getPyodide = async (stdOutRedir, stdErrRedir, url) => {
 	console.log(`=== utils.js v2.0.2 - Pyodide v0.23.3 ===`)
 	console.log(`[${t0.toFixed(2)}ms] Starting getPyodide`)
 
-	const pkgResponse = fetch('vpython.zip').then((x) => x.arrayBuffer())
+	// Support configurable base URL for VSCode webview asset loading
+	const assetBase = window.__assetBaseUrl || ''
+	const vpythonUrl = assetBase ? `${assetBase}/vpython.zip` : 'vpython.zip'
+	const pkgResponse = fetch(vpythonUrl).then((x) => x.arrayBuffer())
 	let pyodide
 	try {
 		// eslint-disable-next-line no-undef

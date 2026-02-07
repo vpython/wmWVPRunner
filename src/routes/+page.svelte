@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { env } from '$env/dynamic/public'
 	import { stdoutStore } from '$lib/stores/stdoutSrc'
 	import { onMount } from 'svelte'
 	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
+	import { createMessaging, isVSCodeWebview } from '$lib/utils/messaging'
+	import { parseGlowScriptVersion } from '$lib/utils/parseVersion'
 	import { PUBLIC_TRUSTED_HOST } from '$env/static/public'
+
 	function redirect_stdout(theText: string) {
 		if (mounted) {
 			stdoutStore.update((val: string) => (val += theText + '\n'))
@@ -38,32 +40,27 @@
 		document.body.appendChild(s)
 	}
 
+	let messaging: ReturnType<typeof createMessaging>
+
 	onMount(async () => {
-		console.log('=== wmWVPRunner v2.0.2 - Using Pyodide v0.23.3 (last known working) ===')
-		console.log('Newer Pyodide versions cause Chrome stack overflow with vpython.vector')
-		console.log('Public host =', PUBLIC_TRUSTED_HOST)
+		console.log('=== wmWVPRunner v2.1.0 - Using Pyodide v0.23.3 ===')
+		console.log('Mode:', isVSCodeWebview() ? 'VSCode webview' : 'iframe')
 		mounted = true
-		window.addEventListener('message', (e) => {
-			//console.log('In window message:', e)
-			if (e.origin !== PUBLIC_TRUSTED_HOST.slice(0, e.origin.length)) {
-				//console.warn('Received message from untrusted origin:', e.origin)
-				return
-			}
-			if (!e.data) {
-				console.warn('Received empty message')
-				return
-			}
-			if (typeof e.data !== 'string') {
-				console.warn('Received message that is not a string:', e.data)
-				return
-			}
-			console.log('In window message:' + JSON.parse(e.data))
-			let obj = JSON.parse(e.data)
+		messaging = createMessaging(PUBLIC_TRUSTED_HOST)
+
+		messaging.onMessage((obj) => {
 			if (obj.program) {
-				let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
+				let program_lines = obj.program.split('\n')
+				// Parse version from first line (e.g. "GlowScript 3.2 VPython")
+				let version = obj.version
+				if (!version) {
+					version = parseGlowScriptVersion(program_lines[0])
+				}
+				// Comment out version string... keep line numbers the same
 				program_lines[0] = '#' + program_lines[0]
 				program = program_lines.join('\n')
-				addScript(`https://www.glowscript.org/package/glow.${obj.version}.min.js`, async () => {
+
+				addScript(`https://www.glowscript.org/package/glow.${version}.min.js`, async () => {
 					try {
 						;({ scene, display } = await setupGSCanvas())
 						pyodide = await getPyodide(redirect_stdout, redirect_stderr, pyodideURL)
@@ -93,8 +90,8 @@
 			}
 		})
 
-		console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
-		window.parent.postMessage(JSON.stringify({ ready: true }), PUBLIC_TRUSTED_HOST)
+		console.log('Sending ready message')
+		messaging.send({ ready: true })
 
 		return () => {
 			mounted = false
@@ -161,10 +158,7 @@
 			context.drawImage(img, 0, 0, width, height)
 			const thumbnail = screenshotCanvas.toDataURL()
 			let isAuto = false
-			window.parent.postMessage(
-				JSON.stringify({ screenshot: thumbnail, autoscreenshot: isAuto }),
-				PUBLIC_TRUSTED_HOST
-			)
+			messaging.send({ screenshot: thumbnail, autoscreenshot: isAuto })
 		} catch (error) {
 			console.error('Error capturing screenshot:', error)
 		}
