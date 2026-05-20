@@ -22,7 +22,7 @@
 	let scene: any
 	let display: any
 	let mounted: boolean = false
-	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.23.3/full/'
+	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.29.4/full/'
 
 	// Standard library imports
 	let mathImportCode = `from math import *`
@@ -39,8 +39,7 @@
 	}
 
 	onMount(async () => {
-		console.log('=== wmWVPRunner v2.0.2 - Using Pyodide v0.23.3 (last known working) ===')
-		console.log('Newer Pyodide versions cause Chrome stack overflow with vpython.vector')
+		console.log('=== wmWVPRunner v2.0.2 - Using Pyodide v0.29.4 ===')
 		console.log('Public host =', PUBLIC_TRUSTED_HOST)
 		mounted = true
 		window.addEventListener('message', (e) => {

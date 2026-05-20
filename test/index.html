@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>wmWVPRunner Test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; display: flex; flex-direction: column; height: 100vh; background: #1e1e1e; color: #ccc; }
+    #toolbar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; background: #2d2d2d; border-bottom: 1px solid #444;
+      flex-shrink: 0;
+    }
+    #toolbar label { font-size: 12px; color: #aaa; }
+    #toolbar input { background: #1e1e1e; border: 1px solid #555; color: #ccc; padding: 3px 6px; font-family: monospace; font-size: 12px; width: 260px; }
+    #toolbar select { background: #1e1e1e; border: 1px solid #555; color: #ccc; padding: 3px 6px; font-family: monospace; font-size: 12px; }
+    #run-btn {
+      padding: 5px 16px; background: #0e7a0e; color: #fff; border: none;
+      cursor: pointer; font-size: 13px; font-weight: bold;
+    }
+    #run-btn:hover { background: #13a313; }
+    #run-btn:disabled { background: #444; cursor: default; }
+    #status { font-size: 11px; color: #aaa; margin-left: auto; }
+    #main { display: flex; flex: 1; overflow: hidden; }
+    #editor-panel { display: flex; flex-direction: column; width: 380px; flex-shrink: 0; border-right: 1px solid #444; }
+    #code { flex: 1; resize: none; background: #1e1e1e; color: #d4d4d4; border: none; padding: 10px; font-size: 13px; line-height: 1.5; outline: none; }
+    #output-panel { display: flex; flex-direction: column; background: #111; }
+    #output-label { padding: 4px 8px; font-size: 11px; color: #888; background: #1a1a1a; border-bottom: 1px solid #333; flex-shrink: 0; }
+    #output { flex: 1; resize: none; background: #111; color: #6af; border: none; padding: 8px; font-size: 12px; outline: none; }
+    #runner-frame { flex: 1; border: none; }
+    #right-panel { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <label>Runner URL:</label>
+    <input type="text" id="runner-url" value="http://localhost:5173" />
+    <label>GS version:</label>
+    <select id="gs-version">
+      <option value="3.2">3.2</option>
+      <option value="3.1">3.1</option>
+      <option value="3.0">3.0</option>
+    </select>
+    <button id="run-btn" onclick="runCode()">▶ Run</button>
+    <span id="status">idle</span>
+  </div>
+
+  <div id="main">
+    <div id="editor-panel">
+      <textarea id="code" spellcheck="false">GlowScript 3.2 VPython
+# ── Comprehensive API stress test ──────────────────────────────────────────
+# Exercises every major import and a wide slice of the API surface.
+# Watch the output panel for PASS/FAIL lines.
+
+def ok(name):
+    print("PASS:", name)
+
+def fail(name, e):
+    print("FAIL:", name, "→", e)
+
+# ── 1. Vector math ──────────────────────────────────────────────────────────
+try:
+    v1 = vector(1, 0, 0)
+    v2 = vector(0, 1, 0)
+    assert mag(v1) == 1.0
+    assert mag2(v1) == 1.0
+    assert str(norm(vector(3,0,0))) == str(vector(1,0,0))
+    assert str(hat(vector(0,5,0))) == str(vector(0,1,0))
+    assert dot(v1, v2) == 0.0
+    cv = cross(v1, v2)
+    assert abs(cv.z - 1.0) < 1e-9
+    pv = proj(vector(1,1,0), v1)
+    assert abs(pv.x - 1.0) < 1e-9
+    da = diff_angle(v1, v2)
+    assert abs(da - pi/2) < 1e-9
+    c = comp(vector(3,4,0), vector(1,0,0))
+    assert abs(c - 3.0) < 1e-9
+    rv = rotate(v1, angle=pi/2, axis=vector(0,0,1))
+    assert abs(rv.y - 1.0) < 1e-6
+    ok("vector math")
+except Exception as e:
+    fail("vector math", e)
+
+# ── 2. Color ────────────────────────────────────────────────────────────────
+try:
+    _ = color.red
+    _ = color.green
+    _ = color.blue
+    _ = color.yellow
+    _ = color.cyan
+    _ = color.magenta
+    _ = color.orange
+    _ = color.purple
+    _ = color.white
+    _ = color.black
+    g = color.gray(0.5)
+    assert abs(g.x - 0.5) < 1e-9
+    hsv = color.rgb_to_hsv(color.red)
+    back = color.hsv_to_rgb(hsv)
+    assert abs(back.x - 1.0) < 1e-6
+    gs = color.rgb_to_grayscale(color.white)
+    assert abs(gs.x - 0.99) < 1e-3
+    ok("color")
+except Exception as e:
+    fail("color", e)
+
+# ── 3. Math / random ────────────────────────────────────────────────────────
+try:
+    assert abs(sin(pi) - 0.0) < 1e-10
+    assert abs(cos(0) - 1.0) < 1e-10
+    assert abs(sqrt(4) - 2.0) < 1e-10
+    r = random()
+    assert 0.0 <= r <= 1.0
+    ok("math + random")
+except Exception as e:
+    fail("math + random", e)
+
+# ── 4. Scene properties ─────────────────────────────────────────────────────
+try:
+    scene.background = color.black
+    scene.ambient    = color.gray(0.3)
+    scene.center     = vector(0, 0, 0)
+    scene.forward    = vector(0, 0, -1)
+    scene.width      = 600
+    scene.height     = 400
+    ok("scene properties")
+except Exception as e:
+    fail("scene properties", e)
+
+# ── 5. Primitive 3D objects ─────────────────────────────────────────────────
+try:
+    s  = sphere(pos=vector(0,3,0),    radius=0.4,               color=color.red)
+    b  = box(pos=vector(2,3,0),       size=vector(0.6,0.6,0.6), color=color.blue)
+    cy = cylinder(pos=vector(-2,3,0), axis=vector(0,1,0),       radius=0.3, color=color.green)
+    ar = arrow(pos=vector(0,1,0),     axis=vector(1,0,0),       color=color.yellow)
+    co = cone(pos=vector(2,1,0),      axis=vector(0,1,0),       radius=0.4, color=color.orange)
+    he = helix(pos=vector(-2,1,0),    axis=vector(1,0,0),       radius=0.3, coils=4, color=color.cyan)
+    el = ellipsoid(pos=vector(0,-1,0),size=vector(1,0.5,0.7),   color=color.magenta)
+    py = pyramid(pos=vector(2,-1,0),  size=vector(0.8,0.8,0.8), color=color.purple)
+    ri = ring(pos=vector(-2,-1,0),    axis=vector(0,1,0),       radius=0.5, thickness=0.1, color=color.white)
+    la = label(pos=vector(0,-3,0),    text="stress test",       color=color.white, height=14)
+    ok("primitive objects")
+except Exception as e:
+    fail("primitive objects", e)
+
+# ── 6. Mutate object properties ─────────────────────────────────────────────
+try:
+    s.color   = color.cyan
+    s.pos     = vector(0, 3.1, 0)
+    s.opacity = 0.8
+    b.size    = vector(0.7, 0.7, 0.7)
+    b.axis    = vector(1, 1, 0)
+    cy.radius = 0.25
+    ok("object mutation")
+except Exception as e:
+    fail("object mutation", e)
+
+# ── 7. Curve and points ─────────────────────────────────────────────────────
+try:
+    crv = curve(color=color.yellow)
+    for i in range(36):
+        t = i * pi / 18
+        crv.append(pos=vector(cos(t)*2, sin(t)*2 - 5, 0))
+    pts = points(color=color.cyan, radius=3)
+    for i in range(12):
+        t = i * pi / 6
+        pts.append(pos=vector(cos(t)*2.5, sin(t)*2.5 - 5, 0))
+    ok("curve + points")
+except Exception as e:
+    fail("curve + points", e)
+
+# ── 8. Vertex / triangle / quad ─────────────────────────────────────────────
+try:
+    v0 = vertex(pos=vector(-1,-6, 0), color=color.red)
+    v1 = vertex(pos=vector( 1,-6, 0), color=color.green)
+    v2 = vertex(pos=vector( 0,-5, 0), color=color.blue)
+    v3 = vertex(pos=vector( 0,-7, 0), color=color.yellow)
+    tri = triangle(v0=v0, v1=v1, v2=v2)
+    q0 = vertex(pos=vector(-1,-8,-0.5), color=color.white)
+    q1 = vertex(pos=vector( 1,-8,-0.5), color=color.cyan)
+    q2 = vertex(pos=vector( 1,-7,-0.5), color=color.magenta)
+    q3 = vertex(pos=vector(-1,-7,-0.5), color=color.orange)
+    qu = quad(v0=q0, v1=q1, v2=q2, v3=q3)
+    ok("vertex + triangle + quad")
+except Exception as e:
+    fail("vertex + triangle + quad", e)
+
+# ── 9. Lights ───────────────────────────────────────────────────────────────
+try:
+    dl = distant_light(direction=vector(1,1,1),  color=color.white)
+    ll = local_light(pos=vector(0,5,0),          color=color.gray(0.6))
+    ok("lights")
+except Exception as e:
+    fail("lights", e)
+
+# ── 10. Compound ────────────────────────────────────────────────────────────
+try:
+    c1 = box(pos=vector( 0.3,0,0), size=vector(0.5,0.5,0.5), color=color.red)
+    c2 = sphere(pos=vector(-0.3,0,0), radius=0.3,             color=color.blue)
+    comp_obj = compound([c1, c2], pos=vector(4,3,0))
+    comp_obj.rotate(angle=pi/4, axis=vector(0,1,0))
+    ok("compound")
+except Exception as e:
+    fail("compound", e)
+
+# ── 11. Graphs ──────────────────────────────────────────────────────────────
+try:
+    g = graph(title="Test graph", xtitle="x", ytitle="y", width=300, height=150)
+    gc = gcurve(graph=g, color=color.red,    label="sin")
+    gv = gvbars(graph=g, color=color.blue,   label="bars", delta=0.5)
+    gd = gdots(graph=g,  color=color.yellow, label="dots")
+    for i in range(20):
+        x = i * 0.3
+        gc.plot(x, sin(x))
+        gv.plot(x, cos(x) * 0.5)
+        gd.plot(x, sin(x) * cos(x))
+    ok("graph + gcurve + gvbars + gdots")
+except Exception as e:
+    fail("graph + gcurve + gvbars + gdots", e)
+
+# ── 12. Extrusion with shapes/paths ─────────────────────────────────────────
+try:
+    s_shape = shapes.circle(radius=0.15)
+    p_path  = paths.line(start=vec(0,0,0), end=vec(0,0,1))
+    ex = extrusion(shape=s_shape, path=p_path, pos=vector(-4, 3, 0), color=color.orange)
+    ok("extrusion + shapes + paths")
+except Exception as e:
+    fail("extrusion + shapes + paths", e)
+
+# ── 13. Clone ───────────────────────────────────────────────────────────────
+try:
+    orig = sphere(pos=vector(-4,1,0), radius=0.3, color=color.green)
+    cl   = orig.clone(pos=vector(-4,2,0))
+    cl.color = color.yellow
+    ok("clone")
+except Exception as e:
+    fail("clone", e)
+
+# ── 14. Clock / sleep (brief) ────────────────────────────────────────────────
+try:
+    t0 = clock()
+    sleep(0.05)
+    elapsed = clock() - t0
+    assert elapsed >= 0.04
+    ok("clock + sleep")
+except Exception as e:
+    fail("clock + sleep", e)
+
+# ── 15. Animation loop — spin objects for 5 seconds ─────────────────────────
+print("Entering animation loop (5 s)...")
+t_end = clock() + 5.0
+dt    = 0.01
+angle = 0.0
+while clock() < t_end:
+    rate(100)
+    angle += dt
+    s.rotate(angle=dt, axis=vector(0,1,0), origin=vector(0,0,0))
+    b.rotate(angle=dt, axis=vector(1,1,0))
+    comp_obj.rotate(angle=dt*2, axis=vector(0,1,0))
+    s.color = color.hsv_to_rgb(vector(angle % 1.0, 1, 1))
+
+print("DONE — all tests complete")
+</textarea>
+      <div id="output-panel" style="height: 140px;">
+        <div id="output-label">stdout / stderr</div>
+        <textarea id="output" readonly></textarea>
+      </div>
+    </div>
+    <div id="right-panel">
+      <iframe id="runner-frame" src="" allow="cross-origin-isolated"></iframe>
+    </div>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById('status')
+    const outputEl = document.getElementById('output')
+    const runBtn = document.getElementById('run-btn')
+    const frame = document.getElementById('runner-frame')
+    let ready = false
+    let currentRunnerOrigin = ''
+
+    function setStatus(msg) {
+      statusEl.textContent = msg
+    }
+
+    function loadRunner() {
+      const url = document.getElementById('runner-url').value.trim()
+      currentRunnerOrigin = new URL(url).origin
+      ready = false
+      runBtn.disabled = true
+      setStatus('loading runner...')
+      outputEl.value = ''
+      frame.src = url
+    }
+
+    window.addEventListener('message', (e) => {
+      if (e.origin !== currentRunnerOrigin) return
+      let obj
+      try { obj = JSON.parse(e.data) } catch { return }
+
+      if (obj.ready) {
+        ready = true
+        runBtn.disabled = false
+        setStatus('runner ready')
+      } else if (obj.screenshot) {
+        setStatus('screenshot received')
+      }
+    })
+
+    function runCode() {
+      if (!ready) {
+        alert('Runner not ready. Load the runner first.')
+        return
+      }
+      const code = document.getElementById('code').value
+      const version = document.getElementById('gs-version').value
+      outputEl.value = ''
+      setStatus('running...')
+      runBtn.disabled = true
+
+      // Re-enable after a short delay so user can run again
+      setTimeout(() => { runBtn.disabled = false }, 1000)
+
+      const msg = JSON.stringify({ program: code, version })
+      frame.contentWindow.postMessage(msg, currentRunnerOrigin)
+    }
+
+    // Load runner on page load
+    loadRunner()
+
+    // Reload runner when URL changes
+    document.getElementById('runner-url').addEventListener('change', loadRunner)
+  </script>
+</body>
+</html>

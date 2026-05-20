@@ -4,7 +4,7 @@ await micropip.install('/cyvector-0.1-cp311-cp311-emscripten_3_1_39_wasm32.whl')
 
 export const getPyodide = async (stdOutRedir, stdErrRedir, url) => {
 	const t0 = performance.now()
-	console.log(`=== utils.js v2.0.2 - Pyodide v0.23.3 ===`)
+	console.log(`=== utils.js v2.0.2 - Pyodide v0.29.4 ===`)
 	console.log(`[${t0.toFixed(2)}ms] Starting getPyodide`)
 
 	const pkgResponse = fetch('vpython.zip').then((x) => x.arrayBuffer())
