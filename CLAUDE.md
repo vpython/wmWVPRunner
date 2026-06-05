@@ -2,9 +2,9 @@
 
 ## Status: RESOLVED ✓
 
-**Solution:** Use Pyodide v0.23.3 (Python 3.10)
+**Solution:** Use Pyodide v0.29.4 (Python 3.12)
 
-The Chrome stack overflow issue has been resolved by using Pyodide v0.23.3. Newer versions (v0.24.0+) cause Chrome-specific crashes when importing `vpython.vector`. See `PYODIDE_UPGRADE_NOTES.md` for upgrade path.
+The Chrome stack overflow issue has been resolved by upgrading to Pyodide v0.29.4. See `PYODIDE_UPGRADE_NOTES.md` for upgrade path.
 
 ## Problem Description
 
@@ -36,10 +36,10 @@ No amount of JavaScript delays, Python code modifications, or import restructuri
 - It was a timing-dependent race condition in Chrome's V8 engine
 - The only temporary "fix" was Chrome running slower (DevTools open)
 
-## Solution: Upgrade to Pyodide v0.29.0
+## Solution: Upgrade to Pyodide v0.29.4
 
 **Implemented in v2.0.0**:
-- Updated `src/routes/+page.svelte:25` to use `https://cdn.jsdelivr.net/pyodide/v0.29.0/full/`
+- Updated `src/routes/+page.svelte:25` to use `https://cdn.jsdelivr.net/pyodide/v0.29.4/full/`
 - Removed unnecessary delay workarounds from `src/lib/utils/utils.js`
 - Simplified import logic in `src/routes/+page.svelte` (no more delays needed)
 - Tested and verified: NumPy and vpython imports work in Chrome with DevTools closed
@@ -66,6 +66,9 @@ No amount of JavaScript delays, Python code modifications, or import restructuri
 **File**: `do_build.sh`
 
 ```bash
+# Build vpython package first
+npm run zip
+
 # Clean old artifacts
 gsutil -m rm -r gs://wmvprunner/_app/ 2>/dev/null || true
 gsutil rm gs://wmvprunner/index.html gs://wmvprunner/favicon.png 2>/dev/null || true
@@ -73,7 +76,7 @@ gsutil rm gs://wmvprunner/index.html gs://wmvprunner/favicon.png 2>/dev/null || 
 # Set CORS on bucket
 gsutil cors set cors.json gs://wmvprunner
 
-# Build the app
+# Build the app (vpython.zip lands in build/ via static/)
 npm run build
 
 # Upload with cache headers
@@ -148,5 +151,5 @@ Note: While there are multiple imports of the same modules, Python's import syst
 ## Additional Notes
 
 - The `sleep()` function in `vpython/__init__.py:15-18` uses a tight loop with `rate(60)` - this is intentional and not the cause of the issue
-- Pyodide version: v0.28.3 (loaded from CDN)
+- Pyodide version: v0.29.4 (loaded from CDN)
 - GlowScript library loaded dynamically based on version in program code

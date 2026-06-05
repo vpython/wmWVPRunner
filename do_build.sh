@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e  # Exit on error
 
+# Build the vpython Python package zip from source
+echo "Building vpython.zip..."
+npm run zip
+
 #gcloud builds submit --tag us.gcr.io/glowscript/wmvvprunner .
 #gcloud run deploy wmvvprunner --image us.gcr.io/glowscript/wmvvprunner
 # check .env for correct env vars
