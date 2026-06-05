@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { env } from '$env/dynamic/public'
 	import { stdoutStore } from '$lib/stores/stdoutSrc'
 	import { onMount } from 'svelte'
 	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
