@@ -11,5 +11,6 @@ vite.config.ts.timestamp-*
 *~
 /venv
 /static/vpython.zip
+/static/config.json
 /build.env
 /.env.dev.backup

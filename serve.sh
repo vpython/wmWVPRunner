@@ -12,5 +12,6 @@
 # dev server reachable on all network interfaces for tablets and phones.
 
 export PUBLIC_TRUSTED_HOST=${FLASK_HOST:-"http://localhost:8080"}
+echo "{\"PUBLIC_TRUSTED_HOST\": \"$PUBLIC_TRUSTED_HOST\"}" > static/config.json
 echo "Starting wmWVPRunner dev server on port 5173 (trusted host: $PUBLIC_TRUSTED_HOST)"
 npm run dev -- --host
