@@ -1,15 +1,18 @@
 #!/bin/bash
 set -e  # Exit on error
 
-# Load production env vars into .env.production so Vite picks them up
-# (Vite loads .env.production for production builds, overriding .env)
+# Swap in production env for the build, restore dev env after
 if [ -f build.env ]; then
-    cp build.env .env.production
+    cp .env .env.dev.backup
+    cp build.env .env
     echo "Using production env from build.env"
 else
     echo "ERROR: build.env not found. Copy build.env.sample to build.env and fill in values."
     exit 1
 fi
+
+# Ensure dev env is restored even if the build fails
+trap 'mv .env.dev.backup .env; rm -f .env.dev.backup' EXIT
 
 # Build the vpython Python package zip from source
 echo "Building vpython.zip..."
@@ -76,6 +79,3 @@ else
 fi
 
 echo "=== Deploy complete! ==="
-
-# Clean up generated production env file
-rm -f .env.production
