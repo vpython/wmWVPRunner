@@ -3,6 +3,8 @@
 	import { onMount } from 'svelte'
 	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
 	import { PUBLIC_TRUSTED_HOST } from '$env/static/public'
+	const trustedHosts = PUBLIC_TRUSTED_HOST.split(',').map((s) => s.trim())
+	let activeParentOrigin = '*'
 	function redirect_stdout(theText: string) {
 		if (mounted) {
 			stdoutStore.update((val: string) => (val += theText + '\n'))
@@ -43,10 +45,11 @@
 		mounted = true
 		window.addEventListener('message', (e) => {
 			//console.log('In window message:', e)
-			if (e.origin !== PUBLIC_TRUSTED_HOST.slice(0, e.origin.length)) {
+			if (!trustedHosts.includes(e.origin)) {
 				//console.warn('Received message from untrusted origin:', e.origin)
 				return
 			}
+			activeParentOrigin = e.origin
 			if (!e.data) {
 				console.warn('Received empty message')
 				return
@@ -92,7 +95,7 @@
 		})
 
 		console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
-		window.parent.postMessage(JSON.stringify({ ready: true }), PUBLIC_TRUSTED_HOST)
+		window.parent.postMessage(JSON.stringify({ ready: true }), '*')
 
 		return () => {
 			mounted = false
@@ -161,7 +164,7 @@
 			let isAuto = false
 			window.parent.postMessage(
 				JSON.stringify({ screenshot: thumbnail, autoscreenshot: isAuto }),
-				PUBLIC_TRUSTED_HOST
+				activeParentOrigin
 			)
 		} catch (error) {
 			console.error('Error capturing screenshot:', error)
