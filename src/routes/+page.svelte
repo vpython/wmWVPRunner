@@ -2,7 +2,7 @@
 	import { stdoutStore } from '$lib/stores/stdoutSrc'
 	import { onMount } from 'svelte'
 	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
-	import { PUBLIC_TRUSTED_HOST } from '$env/static/public'
+	import { PUBLIC_TRUSTED_HOST, PUBLIC_PACKAGE_BASE_URL } from '$env/static/public'
 	const trustedHosts = PUBLIC_TRUSTED_HOST.split(',').map((s) => s.trim())
 	let activeParentOrigin = '*'
 	function redirect_stdout(theText: string) {
@@ -64,7 +64,7 @@
 				let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
 				program_lines[0] = '#' + program_lines[0]
 				program = program_lines.join('\n')
-				addScript(`https://www.glowscript.org/package/glow.${obj.version}.min.js`, async () => {
+				addScript(`${PUBLIC_PACKAGE_BASE_URL}/package/glow.${obj.version}.min.js`, async () => {
 					try {
 						;({ scene, display } = await setupGSCanvas())
 						pyodide = await getPyodide(redirect_stdout, redirect_stderr, pyodideURL)
