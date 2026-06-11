@@ -39,6 +39,36 @@
 		document.body.appendChild(s)
 	}
 
+	function addScripts(urls: string[], callback: () => void) {
+		if (urls.length === 0) { callback(); return }
+		addScript(urls[0], () => addScripts(urls.slice(1), callback))
+	}
+
+	const unpackagedLibs = [
+		'lib/jquery/2.1/jquery.mousewheel.js',
+		'lib/flot/jquery.flot.js',
+		'lib/flot/jquery.flot.crosshair_GS.js',
+		'lib/plotly.js',
+		'lib/opentype/poly2tri.js',
+		'lib/opentype/opentype.js',
+		'lib/glMatrix.js',
+		'lib/webgl-utils.js',
+		'lib/glow/property.js',
+		'lib/glow/vectors.js',
+		'lib/glow/mesh.js',
+		'lib/glow/canvas.js',
+		'lib/glow/orbital_camera.js',
+		'lib/glow/autoscale.js',
+		'lib/glow/api_misc.js',
+		'lib/glow/WebGLRenderer.js',
+		'lib/glow/graph.js',
+		'lib/glow/color.js',
+		'lib/glow/shapespaths.js',
+		'lib/glow/primitives.js',
+		'lib/glow/extrude.js',
+		'lib/glow/shaders.gen.js',
+	].map((f) => `${PUBLIC_PACKAGE_BASE_URL}/${f}`)
+
 	onMount(async () => {
 		console.log('=== wmWVPRunner v2.0.2 - Using Pyodide v0.29.4 ===')
 		console.log('Public host =', PUBLIC_TRUSTED_HOST)
@@ -64,7 +94,10 @@
 				let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
 				program_lines[0] = '#' + program_lines[0]
 				program = program_lines.join('\n')
-				addScript(`${PUBLIC_PACKAGE_BASE_URL}/package/glow.${obj.version}.min.js`, async () => {
+				const loadLibs = obj.unpackaged
+					? (cb: () => void) => addScripts(unpackagedLibs, cb)
+					: (cb: () => void) => addScript(`${PUBLIC_PACKAGE_BASE_URL}/package/glow.${obj.version}.min.js`, cb)
+				loadLibs(async () => {
 					try {
 						;({ scene, display } = await setupGSCanvas())
 						pyodide = await getPyodide(redirect_stdout, redirect_stderr, pyodideURL)
