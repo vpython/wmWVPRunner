@@ -8,8 +8,8 @@ __all__ = ['vector_js']
 class vector_js(vector):
     'python vector class with internal jsObj tracking'
 
-    def __init__(self, *args, jsObj = None):
-        super().__init__(*args)
+    def __init__(self, *args, jsObj=None, x=None, y=None, z=None):
+        super().__init__(*args, x=x, y=y, z=z)
 
         if jsObj:
             self.jsObj = jsObj
