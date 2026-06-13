@@ -25,6 +25,9 @@
 	let mounted: boolean = false
 	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.29.4/full/'
 	let currentWorker: Worker | null = null
+	let lastFrameTime: number = 0
+	let worker: Worker | null = null
+	let sharedBuffer: BigInt64Array | null = null
 
 	// Standard library imports
 	let mathImportCode = `from math import *`
@@ -252,6 +255,9 @@
 			try {
 				worker = await initializeWorker(program, sharedBuffer)
 				currentWorker = worker
+				// Store references for message handler
+				sharedBuffer = buffer as any
+				lastFrameTime = performance.now()
 			} catch (err) {
 				stdoutStore.update((val) => (val += 'Worker init error: ' + err + '\n'))
 				return
@@ -272,10 +278,26 @@
 				} else if (msg.type === 'error') {
 					redirect_stderr('Program error: ' + msg.error)
 				} else if (msg.type === 'rate') {
-					// Handle rate() call — render frame and notify worker
-					// This will be implemented in Phase 2
-					buffer[0] = 1n // Signal: proceed
-					Atomics.notify(buffer, 0)
+					// Handle rate() call from worker
+					const fps = msg.fps
+					const frameInterval = 1000 / fps // milliseconds per frame
+
+					// Render current frame
+					const now = performance.now()
+
+					// Calculate how long to wait
+					let waitMs = frameInterval
+					if (lastFrameTime > 0) {
+						const elapsed = now - lastFrameTime
+						waitMs = Math.max(0, frameInterval - elapsed)
+					}
+
+					// Schedule wake-up
+					setTimeout(() => {
+						sharedBuffer![0] = 1n // Set signal to proceed (BigInt)
+						Atomics.notify(sharedBuffer!, 0) // Wake worker
+						lastFrameTime = performance.now()
+					}, waitMs)
 				}
 			})
 		} catch (err) {
