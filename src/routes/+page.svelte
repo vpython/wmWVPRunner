@@ -76,25 +76,29 @@
 	onMount(async () => {
 		console.log('=== wmWVPRunner v2.0.2 - Using Pyodide v0.29.4 ===')
 		console.log('Public host =', PUBLIC_TRUSTED_HOST)
+		console.log('Trusted hosts:', trustedHosts)
 		mounted = true
 		window.addEventListener('message', (e) => {
-			//console.log('In window message:', e)
+			console.log('[wmWVPRunner] Received postMessage:', {origin: e.origin, data: typeof e.data, stringified: e.data?.substring?.(0, 100)})
 			if (!trustedHosts.includes(e.origin)) {
-				//console.warn('Received message from untrusted origin:', e.origin)
+				console.warn('[wmWVPRunner] REJECTED: untrusted origin:', e.origin, 'not in', trustedHosts)
 				return
 			}
 			activeParentOrigin = e.origin
+			console.log('[wmWVPRunner] Origin trusted, processing message')
 			if (!e.data) {
 				console.warn('Received empty message')
 				return
 			}
 			if (typeof e.data !== 'string') {
-				console.warn('Received message that is not a string:', e.data)
+				console.warn('Received message that is not a string:', typeof e.data)
 				return
 			}
-			console.log('In window message:' + JSON.parse(e.data))
+			console.log('[wmWVPRunner] Message data (first 200 chars):', e.data.substring(0, 200))
 			let obj = JSON.parse(e.data)
+			console.log('[wmWVPRunner] Parsed message object:', Object.keys(obj))
 			if (obj.program) {
+				console.log('[wmWVPRunner] Got program message, loading libraries...')
 				let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
 				program_lines[0] = '#' + program_lines[0]
 				program = program_lines.join('\n')
@@ -134,8 +138,15 @@
 		// Send ready message to parent when component is mounted and listening for messages
 		// The parent will then send the program code
 		setTimeout(() => {
-			console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
-			window.parent.postMessage(JSON.stringify({ ready: true }), '*')
+			console.log('[wmWVPRunner] Sending ready message to parent')
+			console.log('[wmWVPRunner] Parent origin (will accept from *):', window.parent.location?.origin || 'unknown')
+			console.log('[wmWVPRunner] This window location:', window.location.origin)
+			try {
+				window.parent.postMessage(JSON.stringify({ ready: true }), '*')
+				console.log('[wmWVPRunner] Ready message sent successfully')
+			} catch (err) {
+				console.error('[wmWVPRunner] ERROR sending ready message:', err)
+			}
 		}, 100)
 
 		return () => {
