@@ -68,29 +68,32 @@ export function initializeWorker(code, sharedBuffer) {
 
 		let readyReceived = false;
 
-		worker.addEventListener('message', (event) => {
-			const msg = event.data;
-			if (msg.type === 'ready') {
-				readyReceived = true;
-				console.log('[Main] Worker ready, executing code');
-				worker.postMessage({ type: 'run', code: code });
-				resolve(worker);
-			} else if (msg.type === 'error') {
-				reject(new Error(msg.error));
-			}
-		});
-
-		worker.addEventListener('error', (event) => {
-			reject(new Error(`Worker error: ${event.message}`));
-		});
-
-		// Initialize worker with shared buffer
-		worker.postMessage({ type: 'init', sharedBuffer: sharedBuffer }, [sharedBuffer]);
-
-		setTimeout(() => {
+		const timeoutId = setTimeout(() => {
 			if (!readyReceived) {
 				reject(new Error('Worker initialization timeout'));
 			}
 		}, 10000);
+
+		worker.addEventListener('message', (event) => {
+			const msg = event.data;
+			if (msg.type === 'ready') {
+				readyReceived = true;
+				clearTimeout(timeoutId);
+				console.log('[Main] Worker ready, executing code');
+				worker.postMessage({ type: 'run', code: code });
+				resolve(worker);
+			} else if (msg.type === 'error') {
+				clearTimeout(timeoutId);
+				reject(new Error(msg.error));
+			}
+		}, { once: true });
+
+		worker.addEventListener('error', (event) => {
+			clearTimeout(timeoutId);
+			reject(new Error(`Worker error: ${event.message}`));
+		}, { once: true });
+
+		// Initialize worker with shared buffer
+		worker.postMessage({ type: 'init', sharedBuffer: sharedBuffer }, [sharedBuffer]);
 	});
 }
