@@ -111,3 +111,63 @@ def _redirect_stderr(text):
         'type': 'stderr',
         'text': str(text)
     })
+
+
+# Graphics function wrappers
+def _make_gfx_wrapper(func_name):
+    """Create a wrapper that calls gfx_call() for a graphics function."""
+    def wrapper(*args, **kwargs):
+        # Convert args/kwargs to serializable format
+        serializable_args = list(args)  # Assume args are already serializable
+        serializable_kwargs = dict(kwargs)
+
+        object_id = gfx_call(func_name, serializable_args, serializable_kwargs)
+
+        if object_id < 0:
+            raise RuntimeError(f"Failed to create graphics object: {func_name}")
+
+        # Return a proxy object that will forward method calls
+        return GFXProxy(object_id, func_name)
+
+    return wrapper
+
+
+class GFXProxy:
+    """Proxy for graphics objects created on main thread."""
+
+    def __init__(self, object_id, func_name):
+        object.__setattr__(self, 'object_id', object_id)
+        object.__setattr__(self, 'func_name', func_name)
+
+    def __repr__(self):
+        object_id = object.__getattribute__(self, 'object_id')
+        func_name = object.__getattribute__(self, 'func_name')
+        return f"<GFXProxy {func_name}#{object_id}>"
+
+    def __setattr__(self, name, value):
+        """Set attribute on the remote graphics object."""
+        if name in ('object_id', 'func_name'):
+            # Internal attributes
+            object.__setattr__(self, name, value)
+        else:
+            # Remote property set (not implemented in Phase 3, stub for now)
+            _post_message({
+                'type': 'gfx_setattr',
+                'objectId': object.__getattribute__(self, 'object_id'),
+                'attr': name,
+                'value': value
+            })
+
+
+# Expose graphics functions
+sphere = _make_gfx_wrapper('sphere')
+box = _make_gfx_wrapper('box')
+cylinder = _make_gfx_wrapper('cylinder')
+pyramid = _make_gfx_wrapper('pyramid')
+cone = _make_gfx_wrapper('cone')
+torus = _make_gfx_wrapper('torus')
+helix = _make_gfx_wrapper('helix')
+ring = _make_gfx_wrapper('ring')
+vertex = _make_gfx_wrapper('vertex')
+compound = _make_gfx_wrapper('compound')
+curve = _make_gfx_wrapper('curve')

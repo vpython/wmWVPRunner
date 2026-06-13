@@ -4,17 +4,35 @@ import sys
 _in_worker = hasattr(sys, 'js') and sys.modules.get('__main__').__dict__.get('__pyodide_worker', False)
 
 if _in_worker:
-    # In worker context, import bridge and use its rate()
+    # In worker context, import bridge and use its rate() and graphics functions
     from . import _worker_bridge
     rate = _worker_bridge.rate
+    sphere = _worker_bridge.sphere
+    box = _worker_bridge.box
+    cylinder = _worker_bridge.cylinder
+    pyramid = _worker_bridge.pyramid
+    cone = _worker_bridge.cone
+    torus = _worker_bridge.torus
+    helix = _worker_bridge.helix
+    ring = _worker_bridge.ring
+    vertex = _worker_bridge.vertex
+    compound = _worker_bridge.compound
+    curve = _worker_bridge.curve
 else:
     # In main thread or non-worker context, use rate from core_funcs
     from .core_funcs import rate
 
-from .core_funcs import pyramid, ring, sphere, box, js_vec, cylinder, arrow, cone, helix, label, scene
-from .core_funcs import ellipsoid, pyramid, ring, text, distant_light, local_light, button
-from .core_funcs import slider, radio, checkbox, menu, wtext, curve, points, get_library
-from .core_funcs import vertex, triangle, quad, extrusion, canvas, attach_light, compound
+# Conditionally import from core_funcs (avoid conflicts in worker mode for graphics functions)
+if not _in_worker:
+    from .core_funcs import pyramid, ring, sphere, box, cylinder, cone, helix, vertex, compound, curve
+else:
+    # In worker mode, these come from _worker_bridge above
+    pass
+
+from .core_funcs import js_vec, arrow, label, scene
+from .core_funcs import ellipsoid, text, distant_light, local_light, button
+from .core_funcs import slider, radio, checkbox, menu, wtext, points, get_library
+from .core_funcs import triangle, quad, extrusion, canvas, attach_light
 from .core_funcs import graph, gcurve, gvbars, gdots, js_debug, simple_sphere, js_window
 from .shapespaths_orig import *
 from .vector import adjust_axis, adjust_up, comp, cross, diff_angle, dot, hat, mag, mag2, norm, object_rotate, proj, rotate

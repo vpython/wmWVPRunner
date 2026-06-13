@@ -299,16 +299,34 @@
 						lastFrameTime = performance.now()
 					}, waitMs)
 				} else if (msg.type === 'call_gfx') {
-					// Handle graphics call from worker
 					const funcName = msg.func
 					const args = msg.args || []
 					const kwargs = msg.kwargs || {}
 
-					console.log(`[Main] Graphics call: ${funcName}`, args, kwargs)
+					try {
+						// Call the corresponding JS function from GlowScript
+						// Functions are loaded globally (sphere, box, vector, color, etc.)
+						//@ts-ignore
+						const jsFunc = globalThis[funcName]
+						if (!jsFunc) {
+							throw new Error(`Function ${funcName} not found`)
+						}
 
-					// This will be implemented in Phase 3 task 2
-					// For now, just set signal and notify
-					sharedBuffer![1] = 0n  // Invalid object ID (BigInt)
+						// Call function with args and kwargs
+						const result = jsFunc(...args)
+
+						// Store result and write ID to buffer
+						const objectId = Math.floor(Math.random() * 1e9)  // Simple ID generation
+						globalThis._gfxObjects = globalThis._gfxObjects || new Map()
+						globalThis._gfxObjects.set(objectId, result)
+
+						sharedBuffer![1] = BigInt(objectId)
+						console.log(`[Main] Created object ${objectId} (${funcName})`)
+					} catch (err) {
+						console.error(`[Main] Graphics call failed: ${err}`)
+						sharedBuffer![1] = -1n
+					}
+
 					sharedBuffer![0] = 1n
 					Atomics.notify(sharedBuffer!, 0)
 				}
