@@ -1,4 +1,17 @@
-from .core_funcs import pyramid, ring, sphere, box, js_vec, rate, cylinder, arrow, cone, helix, label, scene
+import sys
+
+# Check if running in Pyodide worker context
+_in_worker = hasattr(sys, 'js') and sys.modules.get('__main__').__dict__.get('__pyodide_worker', False)
+
+if _in_worker:
+    # In worker context, import bridge and use its rate()
+    from . import _worker_bridge
+    rate = _worker_bridge.rate
+else:
+    # In main thread or non-worker context, use rate from core_funcs
+    from .core_funcs import rate
+
+from .core_funcs import pyramid, ring, sphere, box, js_vec, cylinder, arrow, cone, helix, label, scene
 from .core_funcs import ellipsoid, pyramid, ring, text, distant_light, local_light, button
 from .core_funcs import slider, radio, checkbox, menu, wtext, curve, points, get_library
 from .core_funcs import vertex, triangle, quad, extrusion, canvas, attach_light, compound
