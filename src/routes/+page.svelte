@@ -131,8 +131,12 @@
 			}
 		})
 
-		console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
-		window.parent.postMessage(JSON.stringify({ ready: true }), '*')
+		// Send ready message to parent when component is mounted and listening for messages
+		// The parent will then send the program code
+		setTimeout(() => {
+			console.log('Sending ready message to ' + PUBLIC_TRUSTED_HOST)
+			window.parent.postMessage(JSON.stringify({ ready: true }), '*')
+		}, 100)
 
 		return () => {
 			mounted = false
