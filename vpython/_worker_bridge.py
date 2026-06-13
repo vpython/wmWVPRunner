@@ -171,3 +171,45 @@ ring = _make_gfx_wrapper('ring')
 vertex = _make_gfx_wrapper('vertex')
 compound = _make_gfx_wrapper('compound')
 curve = _make_gfx_wrapper('curve')
+
+
+# I/O Redirection Classes
+class WorkerStdout:
+    """Redirects stdout to main thread via postMessage."""
+
+    def __init__(self):
+        self.buffer = ""
+
+    def write(self, text):
+        if text and text != '\n':
+            _post_message({
+                'type': 'stdout',
+                'text': text
+            })
+        return len(text)
+
+    def flush(self):
+        pass
+
+
+class WorkerStderr:
+    """Redirects stderr to main thread via postMessage."""
+
+    def __init__(self):
+        self.buffer = ""
+
+    def write(self, text):
+        if text and text != '\n':
+            _post_message({
+                'type': 'stderr',
+                'text': text
+            })
+        return len(text)
+
+    def flush(self):
+        pass
+
+
+# Redirect stdout and stderr when bridge is imported
+sys.stdout = WorkerStdout()
+sys.stderr = WorkerStderr()
