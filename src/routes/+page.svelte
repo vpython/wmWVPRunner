@@ -211,9 +211,9 @@
 			console.log(`[${t0.toFixed(2)}ms] runMe() started`)
 
 			// Create shared buffer for synchronization (4 Int64 values = 32 bytes)
-			const sharedBuffer = new SharedArrayBuffer(32)
-			const buffer = new BigInt64Array(sharedBuffer)
-			buffer[0] = 0n // Signal: waiting
+			let sharedBuffer2 = new SharedArrayBuffer(32)
+			let buffer2 = new BigInt64Array(sharedBuffer2)
+			buffer2[0] = 0n // Signal: waiting
 
 			// Import libraries first on main thread
 			let t = performance.now()
@@ -242,7 +242,7 @@
 
 			// Initialize worker
 			let tPrev = tAfterLibs
-			let t = performance.now()
+			t = performance.now()
 			console.log(`[${t.toFixed(2)}ms] Initializing worker...`)
 
 			// Clean up previous worker if it exists
@@ -253,10 +253,10 @@
 
 			let worker
 			try {
-				worker = await initializeWorker(program, sharedBuffer)
+				worker = await initializeWorker(program, sharedBuffer2)
 				currentWorker = worker
 				// Store references for message handler
-				sharedBuffer = buffer as any
+				sharedBuffer = buffer2 as any
 				lastFrameTime = performance.now()
 			} catch (err) {
 				stdoutStore.update((val) => (val += 'Worker init error: ' + err + '\n'))
