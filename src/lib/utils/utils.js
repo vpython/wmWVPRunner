@@ -60,3 +60,37 @@ export const setupGSCanvas = async () => {
 	scene = display()
 	return { scene, display }
 }
+
+export function initializeWorker(code, sharedBuffer) {
+	return new Promise((resolve, reject) => {
+		const workerUrl = new URL('../workers/pyodide-worker.js', import.meta.url);
+		const worker = new Worker(workerUrl, { type: 'module' });
+
+		let readyReceived = false;
+
+		worker.addEventListener('message', (event) => {
+			const msg = event.data;
+			if (msg.type === 'ready') {
+				readyReceived = true;
+				console.log('[Main] Worker ready, executing code');
+				worker.postMessage({ type: 'run', code: code });
+				resolve(worker);
+			} else if (msg.type === 'error') {
+				reject(new Error(msg.error));
+			}
+		});
+
+		worker.addEventListener('error', (event) => {
+			reject(new Error(`Worker error: ${event.message}`));
+		});
+
+		// Initialize worker with shared buffer
+		worker.postMessage({ type: 'init', sharedBuffer: sharedBuffer }, [sharedBuffer]);
+
+		setTimeout(() => {
+			if (!readyReceived) {
+				reject(new Error('Worker initialization timeout'));
+			}
+		}, 10000);
+	});
+}
