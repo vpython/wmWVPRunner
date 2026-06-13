@@ -24,6 +24,7 @@
 	let display: any
 	let mounted: boolean = false
 	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.29.4/full/'
+	let currentWorker: Worker | null = null
 
 	// Standard library imports
 	let mathImportCode = `from math import *`
@@ -208,8 +209,8 @@
 
 			// Create shared buffer for synchronization (4 Int64 values = 32 bytes)
 			const sharedBuffer = new SharedArrayBuffer(32)
-			const buffer = new Int64Array(sharedBuffer)
-			buffer[0] = 0 // Signal: waiting
+			const buffer = new BigInt64Array(sharedBuffer)
+			buffer[0] = 0n // Signal: waiting
 
 			// Import libraries first on main thread
 			let t = performance.now()
@@ -219,27 +220,38 @@
 			await pyodide.runPythonAsync(randomImportCode)
 			await pyodide.runPythonAsync(vpythonImportCode)
 
-			let tPrev = t
-			t = performance.now()
-			console.log(`[${t.toFixed(2)}ms] (+${(t - tPrev).toFixed(2)}ms) Libraries imported`)
+			const tAfterLibs = performance.now()
+			console.log(`[${tAfterLibs.toFixed(2)}ms] (+${(tAfterLibs - t).toFixed(2)}ms) Libraries imported`)
 
 			// Check for text constructor
 			let foundTextConstructor = program.match(/[^\.\w]text[\ ]*\(/)
 			if (foundTextConstructor) {
-				//@ts-ignore
-				window.fontloading()
-				//@ts-ignore
-				await window.waitforfonts()
+				try {
+					//@ts-ignore
+					window.fontloading()
+					//@ts-ignore
+					await window.waitforfonts()
+				} catch (err) {
+					console.warn('Font loading warning:', err)
+					// Continue anyway - fonts may not be needed
+				}
 			}
 
 			// Initialize worker
-			tPrev = t
-			t = performance.now()
+			let tPrev = tAfterLibs
+			let t = performance.now()
 			console.log(`[${t.toFixed(2)}ms] Initializing worker...`)
+
+			// Clean up previous worker if it exists
+			if (currentWorker) {
+				currentWorker.terminate()
+				currentWorker = null
+			}
 
 			let worker
 			try {
 				worker = await initializeWorker(program, sharedBuffer)
+				currentWorker = worker
 			} catch (err) {
 				stdoutStore.update((val) => (val += 'Worker init error: ' + err + '\n'))
 				return
@@ -262,13 +274,13 @@
 				} else if (msg.type === 'rate') {
 					// Handle rate() call — render frame and notify worker
 					// This will be implemented in Phase 2
-					buffer[0] = 1 // Signal: proceed
+					buffer[0] = 1n // Signal: proceed
 					Atomics.notify(buffer, 0)
 				}
 			})
 		} catch (err) {
-			console.log('Error:' + err)
-			stdoutStore.update((val) => (val += 'Error:' + err + '\n'))
+			console.error('Error: ' + err)
+			stdoutStore.update((val) => (val += 'Error: ' + err + '\n'))
 		}
 	}
 </script>
