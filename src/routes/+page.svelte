@@ -210,6 +210,16 @@
 			const t0 = performance.now()
 			console.log(`[${t0.toFixed(2)}ms] runMe() started`)
 
+			// Check if SharedArrayBuffer is available (requires COOP/COEP headers)
+			if (typeof SharedArrayBuffer === 'undefined') {
+				stdoutStore.update((val) => (val += 'ERROR: SharedArrayBuffer not available.\n'))
+				stdoutStore.update((val) => (val += 'This requires HTTP response headers:\n'))
+				stdoutStore.update((val) => (val += '  Cross-Origin-Opener-Policy: same-origin\n'))
+				stdoutStore.update((val) => (val += '  Cross-Origin-Embedder-Policy: require-corp\n'))
+				console.error('SharedArrayBuffer not available - check COOP/COEP headers')
+				return
+			}
+
 			// Create shared buffer for synchronization (4 Int64 values = 32 bytes)
 			let sharedBuffer2 = new SharedArrayBuffer(32)
 			let buffer2 = new BigInt64Array(sharedBuffer2)
