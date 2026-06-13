@@ -298,6 +298,19 @@
 						Atomics.notify(sharedBuffer!, 0) // Wake worker
 						lastFrameTime = performance.now()
 					}, waitMs)
+				} else if (msg.type === 'call_gfx') {
+					// Handle graphics call from worker
+					const funcName = msg.func
+					const args = msg.args || []
+					const kwargs = msg.kwargs || {}
+
+					console.log(`[Main] Graphics call: ${funcName}`, args, kwargs)
+
+					// This will be implemented in Phase 3 task 2
+					// For now, just set signal and notify
+					sharedBuffer![1] = 0n  // Invalid object ID (BigInt)
+					sharedBuffer![0] = 1n
+					Atomics.notify(sharedBuffer!, 0)
 				}
 			})
 		} catch (err) {
