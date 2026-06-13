@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { stdoutStore } from '$lib/stores/stdoutSrc'
 	import { onMount } from 'svelte'
-	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
+	import { setupGSCanvas, getPyodide, initializeWorker } from '$lib/utils/utils'
 	import { PUBLIC_TRUSTED_HOST, PUBLIC_PACKAGE_BASE_URL } from '$env/static/public'
 	const trustedHosts = PUBLIC_TRUSTED_HOST.split(',').map((s) => s.trim())
 	let activeParentOrigin = '*'
@@ -145,13 +145,6 @@
 		}
 	})
 
-	const substitutions: (RegExp | string)[][] = [
-		[/[^\.\w\n]rate[\ ]*\(/g, ' await rate('],
-		[/\nrate[\ ]*\(/g, '\nawait rate('],
-		[/scene\.waitfor[\ ]*\(/g, 'await scene.waitfor('],
-		[/[^\.\w\n]get_library[\ ]*\(/g, ' await get_library('],
-		[/\nget_library[\ ]*\(/g, '\nawait get_library(']
-	]
 	async function captureScreenshot() {
 		try {
 			let stage: any
@@ -205,54 +198,77 @@
 	}
 	async function runMe() {
 		try {
-			if (pyodide) {
-				const t0 = performance.now()
-				console.log(`[${t0.toFixed(2)}ms] runMe() started`)
-
-				let asyncProgram = program
-				for (let i = 0; i < substitutions.length; i++) {
-					asyncProgram = asyncProgram.replace(substitutions[i][0], <string>substitutions[i][1])
-				}
-
-				// Import standard libraries and vpython
-				let t = performance.now()
-
-				console.log(`[${t.toFixed(2)}ms] Importing math...`)
-				await pyodide.runPythonAsync(mathImportCode)
-				let tPrev = t
-				t = performance.now()
-				console.log(`[${t.toFixed(2)}ms] (+${(t-tPrev).toFixed(2)}ms) math imported`)
-
-				console.log(`[${t.toFixed(2)}ms] Importing random...`)
-				await pyodide.runPythonAsync(randomImportCode)
-				tPrev = t
-				t = performance.now()
-				console.log(`[${t.toFixed(2)}ms] (+${(t-tPrev).toFixed(2)}ms) random imported`)
-
-				console.log(`[${t.toFixed(2)}ms] Importing vpython...`)
-				await pyodide.runPythonAsync(vpythonImportCode)
-				tPrev = t
-				t = performance.now()
-				console.log(`[${t.toFixed(2)}ms] (+${(t-tPrev).toFixed(2)}ms) vpython imported`)
-
-				var result = null
-
-				let foundTextConstructor = asyncProgram.match(/[^\.\w]text[\ ]*\(/)
-				if (foundTextConstructor) {
-					//@ts-ignore
-					window.fontloading()
-					//@ts-ignore
-					await window.waitforfonts()
-				}
-				await pyodide.loadPackagesFromImports(asyncProgram)
-				var result = await pyodide.runPythonAsync(asyncProgram)
-				if (result) {
-					stdoutStore.update((value: string) => (value += result))
-				}
+			if (!pyodide) {
+				console.error('Pyodide not initialized')
+				return
 			}
+
+			const t0 = performance.now()
+			console.log(`[${t0.toFixed(2)}ms] runMe() started`)
+
+			// Create shared buffer for synchronization (4 Int64 values = 32 bytes)
+			const sharedBuffer = new SharedArrayBuffer(32)
+			const buffer = new Int64Array(sharedBuffer)
+			buffer[0] = 0 // Signal: waiting
+
+			// Import libraries first on main thread
+			let t = performance.now()
+			console.log(`[${t.toFixed(2)}ms] Importing libraries on main thread...`)
+
+			await pyodide.runPythonAsync(mathImportCode)
+			await pyodide.runPythonAsync(randomImportCode)
+			await pyodide.runPythonAsync(vpythonImportCode)
+
+			let tPrev = t
+			t = performance.now()
+			console.log(`[${t.toFixed(2)}ms] (+${(t - tPrev).toFixed(2)}ms) Libraries imported`)
+
+			// Check for text constructor
+			let foundTextConstructor = program.match(/[^\.\w]text[\ ]*\(/)
+			if (foundTextConstructor) {
+				//@ts-ignore
+				window.fontloading()
+				//@ts-ignore
+				await window.waitforfonts()
+			}
+
+			// Initialize worker
+			tPrev = t
+			t = performance.now()
+			console.log(`[${t.toFixed(2)}ms] Initializing worker...`)
+
+			let worker
+			try {
+				worker = await initializeWorker(program, sharedBuffer)
+			} catch (err) {
+				stdoutStore.update((val) => (val += 'Worker init error: ' + err + '\n'))
+				return
+			}
+
+			t = performance.now()
+			console.log(`[${t.toFixed(2)}ms] (+${(t - tPrev).toFixed(2)}ms) Worker initialized`)
+
+			// Set up message handler for worker output
+			worker.addEventListener('message', (event) => {
+				const msg = event.data
+				if (msg.type === 'stdout') {
+					redirect_stdout(msg.text)
+				} else if (msg.type === 'stderr') {
+					redirect_stderr(msg.text)
+				} else if (msg.type === 'done') {
+					console.log(`[${performance.now().toFixed(2)}ms] Program done`)
+				} else if (msg.type === 'error') {
+					redirect_stderr('Program error: ' + msg.error)
+				} else if (msg.type === 'rate') {
+					// Handle rate() call — render frame and notify worker
+					// This will be implemented in Phase 2
+					buffer[0] = 1 // Signal: proceed
+					Atomics.notify(buffer, 0)
+				}
+			})
 		} catch (err) {
 			console.log('Error:' + err)
-			stdoutStore.update((value: string) => (value += 'Error:' + err + '\n'))
+			stdoutStore.update((val) => (val += 'Error:' + err + '\n'))
 		}
 	}
 </script>
