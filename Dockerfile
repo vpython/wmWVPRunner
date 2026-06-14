@@ -1,11 +1,3 @@
-# IMPORTANT: The following headers are required for SharedArrayBuffer (Web Worker feature):
-#   Cross-Origin-Opener-Policy: same-origin
-#   Cross-Origin-Embedder-Policy: require-corp
-#
-# These must be set by the HTTP server. If using Cloud Run with a Node.js express app,
-# add middleware. If using Cloud Load Balancer or Cloud CDN, configure headers there.
-# See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements
-
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./

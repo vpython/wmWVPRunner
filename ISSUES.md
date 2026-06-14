@@ -6,6 +6,14 @@ Last updated: 2026-06-13
 
 ## Issue #1 — `rate()` (and `scene.waitfor`, `get_library`) inside user functions → SyntaxError
 
+**Status: FIXED (Option B — AST transformer).** Implemented in
+`vpython/_async_transform.py`; `+page.svelte` calls `transform_source()` before
+`runPythonAsync` instead of the old regex substitution. The transformer promotes
+the necessary functions to `async def` and inserts `await`, preserving line
+numbers and comments. Option C (WebWorker) was prototyped but abandoned — see
+note at the end of this section. Verified in-browser: `rate()` inside a function
+animates with no SyntaxError.
+
 **GitHub:** #9, #20 (multiple reporters — most-reported bug)
 
 **Root cause:** The runner applies regex substitutions to add `await` before `rate(…)`, `scene.waitfor(…)`, and `get_library(…)`. Pyodide's `runPythonAsync` makes the top-level module scope async, so `await rate(60)` works at top level. But inside a user-defined `def`, `await` is a SyntaxError unless the function is declared `async def`. The regex never touches `def` declarations.

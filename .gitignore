@@ -14,3 +14,5 @@ vite.config.ts.timestamp-*
 /static/config.json
 /build.env
 /.env.dev.backup
+__pycache__/
+*.pyc

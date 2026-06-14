@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { stdoutStore } from '$lib/stores/stdoutSrc'
 	import { onMount } from 'svelte'
-	import { setupGSCanvas, getPyodide, initializeWorker } from '$lib/utils/utils'
+	import { setupGSCanvas, getPyodide } from '$lib/utils/utils'
 	import { PUBLIC_TRUSTED_HOST, PUBLIC_PACKAGE_BASE_URL } from '$env/static/public'
 	const trustedHosts = PUBLIC_TRUSTED_HOST.split(',').map((s) => s.trim())
 	let activeParentOrigin = '*'
@@ -24,10 +24,6 @@
 	let display: any
 	let mounted: boolean = false
 	let pyodideURL = 'https://cdn.jsdelivr.net/pyodide/v0.29.4/full/'
-	let currentWorker: Worker | null = null
-	let lastFrameTime: number = 0
-	let worker: Worker | null = null
-	let sharedBuffer: BigInt64Array | null = null
 
 	// Standard library imports
 	let mathImportCode = `from math import *`
@@ -137,17 +133,11 @@
 
 		// Send ready message to parent when component is mounted and listening for messages
 		// The parent will then send the program code
-		setTimeout(() => {
-			console.log('[wmWVPRunner] Sending ready message to parent')
-			console.log('[wmWVPRunner] Parent origin (will accept from *):', window.parent.location?.origin || 'unknown')
-			console.log('[wmWVPRunner] This window location:', window.location.origin)
-			try {
-				window.parent.postMessage(JSON.stringify({ ready: true }), '*')
-				console.log('[wmWVPRunner] Ready message sent successfully')
-			} catch (err) {
-				console.error('[wmWVPRunner] ERROR sending ready message:', err)
-			}
-		}, 100)
+		// Note: the parent frame is cross-origin, so its location must NOT be
+		// read here — doing so throws a SecurityError. Post with targetOrigin
+		// '*'; the parent validates the message origin on its side.
+		console.log('[wmWVPRunner] Sending ready message to parent')
+		window.parent.postMessage(JSON.stringify({ ready: true }), '*')
 
 		return () => {
 			mounted = false
@@ -225,34 +215,27 @@
 			const t0 = performance.now()
 			console.log(`[${t0.toFixed(2)}ms] runMe() started`)
 
-			// Check if SharedArrayBuffer is available (requires COOP/COEP headers)
-			if (typeof SharedArrayBuffer === 'undefined') {
-				stdoutStore.update((val) => (val += 'ERROR: SharedArrayBuffer not available.\n'))
-				stdoutStore.update((val) => (val += 'This requires HTTP response headers:\n'))
-				stdoutStore.update((val) => (val += '  Cross-Origin-Opener-Policy: same-origin\n'))
-				stdoutStore.update((val) => (val += '  Cross-Origin-Embedder-Policy: require-corp\n'))
-				console.error('SharedArrayBuffer not available - check COOP/COEP headers')
-				return
-			}
-
-			// Create shared buffer for synchronization (4 Int64 values = 32 bytes)
-			let sharedBuffer2 = new SharedArrayBuffer(32)
-			let buffer2 = new BigInt64Array(sharedBuffer2)
-			buffer2[0] = 0n // Signal: waiting
-
-			// Import libraries first on main thread
+			// Import standard libraries and vpython on the main thread, where
+			// GlowScript (WebGL/DOM) lives.
 			let t = performance.now()
-			console.log(`[${t.toFixed(2)}ms] Importing libraries on main thread...`)
-
 			await pyodide.runPythonAsync(mathImportCode)
 			await pyodide.runPythonAsync(randomImportCode)
 			await pyodide.runPythonAsync(vpythonImportCode)
-
 			const tAfterLibs = performance.now()
 			console.log(`[${tAfterLibs.toFixed(2)}ms] (+${(tAfterLibs - t).toFixed(2)}ms) Libraries imported`)
 
-			// Check for text constructor
-			let foundTextConstructor = program.match(/[^\.\w]text[\ ]*\(/)
+			// Fix Issue #1: rewrite the program so rate()/get_library()/
+			// scene.waitfor() work inside user-defined functions. The AST
+			// transformer promotes the necessary functions to `async def` and
+			// inserts `await`, preserving line numbers for error reporting.
+			pyodide.globals.set('__user_source__', program)
+			const asyncProgram: string = pyodide.runPython(
+				'from vpython._async_transform import transform_source\n' +
+				'transform_source(__user_source__)'
+			)
+
+			// Preload fonts if the program creates text() objects.
+			let foundTextConstructor = asyncProgram.match(/[^\.\w]text[\ ]*\(/)
 			if (foundTextConstructor) {
 				try {
 					//@ts-ignore
@@ -265,97 +248,12 @@
 				}
 			}
 
-			// Initialize worker
-			let tPrev = tAfterLibs
-			t = performance.now()
-			console.log(`[${t.toFixed(2)}ms] Initializing worker...`)
-
-			// Clean up previous worker if it exists
-			if (currentWorker) {
-				currentWorker.terminate()
-				currentWorker = null
+			await pyodide.loadPackagesFromImports(asyncProgram)
+			const result = await pyodide.runPythonAsync(asyncProgram)
+			if (result) {
+				stdoutStore.update((value: string) => (value += result))
 			}
-
-			let worker
-			try {
-				worker = await initializeWorker(program, sharedBuffer2)
-				currentWorker = worker
-				// Store references for message handler
-				sharedBuffer = buffer2 as any
-				lastFrameTime = performance.now()
-			} catch (err) {
-				stdoutStore.update((val) => (val += 'Worker init error: ' + err + '\n'))
-				return
-			}
-
-			t = performance.now()
-			console.log(`[${t.toFixed(2)}ms] (+${(t - tPrev).toFixed(2)}ms) Worker initialized`)
-
-			// Set up message handler for worker output
-			worker.addEventListener('message', (event) => {
-				const msg = event.data
-				if (msg.type === 'stdout') {
-					redirect_stdout(msg.text)
-				} else if (msg.type === 'stderr') {
-					redirect_stderr(msg.text)
-				} else if (msg.type === 'done') {
-					console.log(`[${performance.now().toFixed(2)}ms] Program done`)
-				} else if (msg.type === 'error') {
-					redirect_stderr('Program error: ' + msg.error)
-				} else if (msg.type === 'rate') {
-					// Handle rate() call from worker
-					const fps = msg.fps
-					const frameInterval = 1000 / fps // milliseconds per frame
-
-					// Render current frame
-					const now = performance.now()
-
-					// Calculate how long to wait
-					let waitMs = frameInterval
-					if (lastFrameTime > 0) {
-						const elapsed = now - lastFrameTime
-						waitMs = Math.max(0, frameInterval - elapsed)
-					}
-
-					// Schedule wake-up
-					setTimeout(() => {
-						sharedBuffer![0] = 1n // Set signal to proceed (BigInt)
-						Atomics.notify(sharedBuffer!, 0) // Wake worker
-						lastFrameTime = performance.now()
-					}, waitMs)
-				} else if (msg.type === 'call_gfx') {
-					const funcName = msg.func
-					const args = msg.args || []
-					const kwargs = msg.kwargs || {}
-
-					try {
-						// Call the corresponding JS function from GlowScript
-						// Functions are loaded globally (sphere, box, vector, color, etc.)
-						//@ts-ignore
-						const jsFunc = globalThis[funcName]
-						if (!jsFunc) {
-							throw new Error(`Function ${funcName} not found`)
-						}
-
-						// Call function with args and kwargs
-						const result = jsFunc(...args)
-
-						// Store result and write ID to buffer
-						const objectId = Math.floor(Math.random() * 1e9)  // Simple ID generation
-						globalThis._gfxObjects = globalThis._gfxObjects || new Map()
-						globalThis._gfxObjects.set(objectId, result)
-
-						sharedBuffer![1] = BigInt(objectId)
-						console.log(`[Main] Created object ${objectId} (${funcName})`)
-					} catch (err) {
-						console.error(`[Main] Graphics call failed: ${err}`)
-						sharedBuffer![1] = -1n
-					}
-
-					sharedBuffer![0] = 1n
-					Atomics.notify(sharedBuffer!, 0)
-				}
-			})
+			console.log(`[${performance.now().toFixed(2)}ms] Program done`)
 		} catch (err) {
 			console.error('Error: ' + err)
 			stdoutStore.update((val) => (val += 'Error: ' + err + '\n'))

@@ -79,11 +79,3 @@ else
 fi
 
 echo "=== Deploy complete! ==="
-
-# Verify deployment supports COOP/COEP headers for SharedArrayBuffer
-echo ""
-echo "IMPORTANT: Verify your deployment sets these headers:"
-echo "  Cross-Origin-Opener-Policy: same-origin"
-echo "  Cross-Origin-Embedder-Policy: require-corp"
-echo "These headers are required for Web Worker / SharedArrayBuffer synchronization."
-echo "See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements"
