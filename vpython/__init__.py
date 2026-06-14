@@ -10,6 +10,14 @@ from .vector import adjust_axis, adjust_up, comp, cross, diff_angle, dot, hat, m
 from .vec_js import vector_js as vector
 from .color import color
 from js import textures, bumpmaps, winput
+from js import Date as _js_Date
+
+def Date(*args):
+    """JavaScript Date, as used by GlowScript programs (e.g. the Stonehenge
+    example). Constructs a real Date — Date() / Date(year, month, day, ...) —
+    so methods like getFullYear() and getTime() work. (Calling the bare JS
+    Date as a function would otherwise just return a string.)"""
+    return _js_Date.new(*args)
 
 import time
 clock = time.perf_counter
@@ -29,4 +37,4 @@ __all__ = ["sphere", "box", "color", "vec", "py_vec", "js_vec", "vector", "rate"
 'slider', 'wtext', 'radio', 'checkbox', 'menu', 'curve', 'points','vertex', 'triangle','quad',
 'extrusion', 'paths','shapes', 'canvas','textures', 'compound','color','js_debug', 'winput',
 'graph', 'gcurve', 'gvbars', 'gdots','bumpmaps', 'clock', 'simple_sphere', 'get_library',
-'js_window', 'copy']
+'js_window', 'copy', 'Date']
