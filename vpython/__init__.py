@@ -3,7 +3,7 @@ from .core_funcs import pyramid, ring, sphere, box, cylinder, cone, helix, verte
 from .core_funcs import js_vec, arrow, label, scene
 from .core_funcs import ellipsoid, text, distant_light, local_light, button
 from .core_funcs import slider, radio, checkbox, menu, wtext, points, get_library
-from .core_funcs import triangle, quad, extrusion, canvas, attach_light
+from .core_funcs import triangle, quad, extrusion, canvas, attach_light, copy
 from .core_funcs import graph, gcurve, gvbars, gdots, js_debug, simple_sphere, js_window
 from .shapespaths_orig import *
 from .vector import adjust_axis, adjust_up, comp, cross, diff_angle, dot, hat, mag, mag2, norm, object_rotate, proj, rotate
@@ -29,4 +29,4 @@ __all__ = ["sphere", "box", "color", "vec", "py_vec", "js_vec", "vector", "rate"
 'slider', 'wtext', 'radio', 'checkbox', 'menu', 'curve', 'points','vertex', 'triangle','quad',
 'extrusion', 'paths','shapes', 'canvas','textures', 'compound','color','js_debug', 'winput',
 'graph', 'gcurve', 'gvbars', 'gdots','bumpmaps', 'clock', 'simple_sphere', 'get_library',
-'js_window']
+'js_window', 'copy']

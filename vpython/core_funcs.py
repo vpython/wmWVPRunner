@@ -443,6 +443,16 @@ def attach_light(*args, **kwargs):
         raise Exception("attach_light: must have a glowProxy as the unnamed argument")
     return glowProxy(vecAttrs=['offset','color'], oType='attach_light', factory=js_attach_light, *(args[0].jsObj,), **kwargs)
 
+def copy(obj, **kwargs):
+    """Duplicate a Web VPython object, like GlowScript's standalone copy().
+
+    Equivalent to obj.clone(...); kwargs override attributes on the copy
+    (e.g. copy(ball, pos=vector(1,0,0))).
+    """
+    if not isinstance(obj, glowProxy):
+        raise TypeError("copy() argument must be a Web VPython object")
+    return obj.clone(**kwargs)
+
 class cameraProxy(glowProxy):
     def __init__(self, *args, jsObj=None):
         if not jsObj:
