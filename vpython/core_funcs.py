@@ -10,7 +10,7 @@ from js import points as js_points, extrusion as js_extrusion, simple_sphere as 
 from js import window as js_window, fontloading as js_fontloading, waitforfonts as js_waitforfonts
 from js import quad as js_quad, vertex as js_vertex, triangle as js_triangle, ellipsoid as js_ellipsoid
 from js import canvas as js_canvas, attach_light as js_attach_light, compound as js_compound
-from js import graph as js_graph, gcurve as js_gcurve, gvbars as js_gvbars, gdots as js_gdots
+from js import graph as js_graph, gcurve as js_gcurve, gvbars as js_gvbars, gdots as js_gdots, ghbars as js_ghbars
 
 from pyodide.ffi import create_proxy, to_js
 
@@ -313,7 +313,7 @@ class gvbars(graphPlotter):
 
 class ghbars(graphPlotter):
     def __init__(self, *args, **kwargs):
-        graphPlotter.__init__(self, oType='gdots', vecAttrs=['color','marker_color'], listAttrs=['data','pos'],factory=js_gdots, *args, **kwargs)
+        graphPlotter.__init__(self, oType='ghbars', vecAttrs=['color','marker_color'], listAttrs=['data','pos'],factory=js_ghbars, *args, **kwargs)
 
 class gdots(graphPlotter):
     def __init__(self, *args, **kwargs):
