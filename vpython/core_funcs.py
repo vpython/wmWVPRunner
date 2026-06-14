@@ -203,6 +203,26 @@ class glowProxy(object):
         ret = type(self)(*args, **kwargs, jsObj=cjs)
         return ret
 
+    def delete(self):
+        """Remove this object from the scene.
+
+        Desktop VPython and GlowScript write obj.delete(), but JavaScript
+        reserves `delete`, so classic GlowScript rewrites .delete -> .remove in
+        preprocessing. Two removal mechanisms exist in the library:
+          * canvas/scene, graphs and widgets expose a remove() method;
+          * 3-D primitives (box, sphere, ...) have no remove() — they are
+            removed by setting visible = False and marking them deleted
+            (the same thing compound() does to its constituent objects).
+        Note: setattr is used for __deleted to avoid Python name-mangling.
+        """
+        jsObj = self.jsObj
+        remove = getattr(jsObj, 'remove', None)
+        if remove is not None:
+            remove()
+        else:
+            jsObj.visible = False
+            setattr(jsObj, '__deleted', True)
+
 class sphere(glowProxy):
     def __init__(self, *args, **kwargs):
         glowProxy.__init__(self, vecAttrs=['pos','color','size','trail_color'], oType='sphere', factory=js_sphere, *args, **kwargs)
