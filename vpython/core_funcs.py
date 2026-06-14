@@ -320,6 +320,13 @@ class graphPlotter(glowProxy):
         glowProxy.__init__(self, *args, **kwargs)
 
     def plot(self, *args, **kwargs):
+        # GlowScript's plot() accepts plot(x, y), plot([x, y]),
+        # plot([[x, y], ...]), plot(data=[...]) or plot(pos=[...]). Bare numbers
+        # auto-convert to JS, and the data/pos kwargs are converted below, but a
+        # Python list/tuple passed positionally arrives as an opaque PyProxy that
+        # GlowScript rejects ("A quantity to plot must be an ordinary number").
+        # Convert positional sequences to JS arrays.
+        args = tuple(to_js(a) if isinstance(a, (list, tuple)) else a for a in args)
         kwargs = translate_kwargs_lists(kwargs, self.listAttrs)
         self.jsObj.plot(*args, **kwargs)
 
