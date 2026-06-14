@@ -91,9 +91,22 @@
 				let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
 				program_lines[0] = '#' + program_lines[0]
 				program = program_lines.join('\n')
-				const loadLibs = obj.unpackaged
+				const loadBase = obj.unpackaged
 					? (cb: () => void) => addScripts(unpackagedLibs, cb)
 					: (cb: () => void) => addScript(`${PUBLIC_PACKAGE_BASE_URL}/package/glow.${obj.version}.min.js`, cb)
+				// Load MathJax (v2.7.0, Hub API) only when the program uses it,
+				// mirroring classic GlowScript's runner. It MUST load before the
+				// glow library, which configures MathJax (delimiters,
+				// skipStartupTypeset) when it sees the global defined. vpython
+				// exposes the MathJax global to Python once it's loaded here.
+				const needsMathJax = obj.program.indexOf('MathJax') >= 0
+				const loadLibs = (cb: () => void) => {
+					if (needsMathJax) {
+						addScript('https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-MML-AM_CHTML', () => loadBase(cb))
+					} else {
+						loadBase(cb)
+					}
+				}
 				loadLibs(async () => {
 					try {
 						;({ scene, display } = await setupGSCanvas())

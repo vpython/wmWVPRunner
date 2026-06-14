@@ -12,6 +12,14 @@ from .color import color
 from js import textures, bumpmaps, winput
 from js import Date as _js_Date
 
+# MathJax is loaded by the runner only when the program references it (see
+# +page.svelte). get_mathjax() returns a proxy that keeps the classic
+# `MathJax.Hub.Queue([...])` idiom working under Pyodide, or None when MathJax
+# isn't loaded. Do NOT use `from js import MathJax` — that raises ImportError
+# when MathJax isn't loaded, breaking every other program.
+from ._mathjax import get_mathjax
+MathJax = get_mathjax()
+
 def Date(*args):
     """JavaScript Date, as used by GlowScript programs (e.g. the Stonehenge
     example). Constructs a real Date — Date() / Date(year, month, day, ...) —
@@ -37,4 +45,4 @@ __all__ = ["sphere", "box", "color", "vec", "py_vec", "js_vec", "vector", "rate"
 'slider', 'wtext', 'radio', 'checkbox', 'menu', 'curve', 'points','vertex', 'triangle','quad',
 'extrusion', 'paths','shapes', 'canvas','textures', 'compound','color','js_debug', 'winput',
 'graph', 'gcurve', 'gvbars', 'gdots','bumpmaps', 'clock', 'simple_sphere', 'get_library',
-'js_window', 'copy', 'Date']
+'js_window', 'copy', 'Date', 'MathJax']
