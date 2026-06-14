@@ -27,6 +27,20 @@ def Date(*args):
     Date as a function would otherwise just return a string.)"""
     return _js_Date.new(*args)
 
+from js import window as _input_window
+
+def input(prompt=''):
+    """Prompt the user for input in the browser.
+
+    Python's builtin input() reads stdin, which doesn't exist in the browser
+    (it raises OSError: [Errno 29] I/O error). GlowScript gets keyboard input
+    via window.prompt() (that is what the winput widget uses), so input() does
+    the same here. Returns the entered text as a string ('' if the user
+    cancels), so int(input(...)) etc. work as written.
+    """
+    result = _input_window.prompt(str(prompt))
+    return '' if result is None else str(result)
+
 import time
 clock = time.perf_counter
 
@@ -45,4 +59,4 @@ __all__ = ["sphere", "box", "color", "vec", "py_vec", "js_vec", "vector", "rate"
 'slider', 'wtext', 'radio', 'checkbox', 'menu', 'curve', 'points','vertex', 'triangle','quad',
 'extrusion', 'paths','shapes', 'canvas','textures', 'compound','color','js_debug', 'winput',
 'graph', 'gcurve', 'gvbars', 'ghbars', 'gdots','bumpmaps', 'clock', 'simple_sphere', 'get_library',
-'js_window', 'copy', 'Date', 'MathJax']
+'js_window', 'copy', 'Date', 'MathJax', 'input']
