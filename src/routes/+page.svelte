@@ -72,16 +72,12 @@
 	onMount(async () => {
 		console.log('=== wmWVPRunner v2.0.2 - Using Pyodide v0.29.4 ===')
 		console.log('Public host =', PUBLIC_TRUSTED_HOST)
-		console.log('Trusted hosts:', trustedHosts)
 		mounted = true
 		window.addEventListener('message', (e) => {
-			console.log('[wmWVPRunner] Received postMessage:', {origin: e.origin, data: typeof e.data, stringified: e.data?.substring?.(0, 100)})
 			if (!trustedHosts.includes(e.origin)) {
-				console.warn('[wmWVPRunner] REJECTED: untrusted origin:', e.origin, 'not in', trustedHosts)
 				return
 			}
 			activeParentOrigin = e.origin
-			console.log('[wmWVPRunner] Origin trusted, processing message')
 			if (!e.data) {
 				console.warn('Received empty message')
 				return
@@ -90,11 +86,8 @@
 				console.warn('Received message that is not a string:', typeof e.data)
 				return
 			}
-			console.log('[wmWVPRunner] Message data (first 200 chars):', e.data.substring(0, 200))
 			let obj = JSON.parse(e.data)
-			console.log('[wmWVPRunner] Parsed message object:', Object.keys(obj))
 			if (obj.program) {
-				console.log('[wmWVPRunner] Got program message, loading libraries...')
 				let program_lines = obj.program.split('\n') // comment out version string... keep line numbers the same
 				program_lines[0] = '#' + program_lines[0]
 				program = program_lines.join('\n')
@@ -131,12 +124,10 @@
 			}
 		})
 
-		// Send ready message to parent when component is mounted and listening for messages
-		// The parent will then send the program code
-		// Note: the parent frame is cross-origin, so its location must NOT be
-		// read here — doing so throws a SecurityError. Post with targetOrigin
-		// '*'; the parent validates the message origin on its side.
-		console.log('[wmWVPRunner] Sending ready message to parent')
+		// Tell the parent we're listening; it will send the program code.
+		// The parent frame is cross-origin, so its location must NOT be read
+		// here (that throws a SecurityError). Post with targetOrigin '*'; the
+		// parent validates the message origin on its side.
 		window.parent.postMessage(JSON.stringify({ ready: true }), '*')
 
 		return () => {
