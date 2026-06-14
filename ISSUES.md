@@ -158,10 +158,13 @@ JavaScript `Date` is not bridged to Python. Fix: `from js import Date` added to 
 
 **GitHub:** #17
 
-Standard Python 3 `range()` only accepts integers; float step was a GlowScript/RapydScript compatibility extension. Options:
-- Provide a custom `arange(start, stop, step)` function (like `numpy.arange`) and export it.
-- Alias or monkey-patch `range` (inadvisable).
-- Document the difference and recommend `numpy.arange` or a manual list comprehension.
+**Status: WON'T FIX (documented decision, 2026-06-14).** The WASM runner runs
+real Python, where `range()` only accepts integers. RapydScript allowed float
+steps, but we are deliberately NOT overriding `range()` to diverge from standard
+Python — keeping the runtime faithful to Python is more valuable than matching
+that one RapydScript extension. Float steps should use `numpy.arange(start,
+stop, step)` or a manual loop/comprehension. This belongs in the user-facing
+compatibility notes (webVPythonDocsHome), not in runner code.
 
 ---
 
