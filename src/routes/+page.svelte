@@ -266,4 +266,11 @@
 </script>
 
 <div id="glowscript" class="glowscript" />
-<div><textarea bind:this={stdout} rows="10" cols="80" hidden /></div>
+<div><textarea class="print-output" bind:this={stdout} rows="10" cols="80" hidden /></div>
+
+<style>
+	.print-output {
+		font-family: Verdana, sans-serif;
+		font-size: 100%;
+	}
+</style>
