@@ -17,6 +17,19 @@
 		}
 	}
 
+	function summarizeError(text: string) {
+		const lines = text.split('\n').map((line) => line.trim()).filter(Boolean)
+		return lines.length ? lines[lines.length - 1] : text
+	}
+
+	function reportErrorToParent(err: any) {
+		const traceback = err?.message ?? err?.toString?.() ?? String(err)
+		window.parent.postMessage(
+			JSON.stringify({ error: summarizeError(traceback), traceback }),
+			activeParentOrigin
+		)
+	}
+
 	let pyodide: any = null
 	let program: string
 	let stdout: HTMLTextAreaElement
@@ -128,6 +141,7 @@
 									toString: err?.toString ? err.toString() : undefined
 								}
 								redirect_stderr('__reportScriptError:' + JSON.stringify(details))
+								reportErrorToParent(err)
 							} catch (err) {
 								redirect_stderr('__reportScriptError: Not sure! Cannot stringify')
 							}
@@ -267,6 +281,7 @@
 		} catch (err) {
 			console.error('Error: ' + err)
 			stdoutStore.update((val) => (val += 'Error: ' + err + '\n'))
+			reportErrorToParent(err)
 		}
 	}
 </script>
