@@ -27,7 +27,7 @@
 
 	// Standard library imports
 	let mathImportCode = `from math import *`
-	let randomImportCode = `from random import random`
+	let randomImportCode = `from random import *`
 
 	// Import vpython
 	let vpythonImportCode = `from vpython import *`
