@@ -6,6 +6,8 @@ This runner uses [pyodide](https://pyodide.org/en/stable/) to provide a python i
 
 Not all WebVPython features have been implemented, but many are available.
 
+See [COMPATIBILITY.md](COMPATIBILITY.md) for notes about differences from classic GlowScript/RapydScript behavior.
+
 Please report and bugs here:
 
 [Issues](https://github.com/vpython/wmWVPRunner/issues)
