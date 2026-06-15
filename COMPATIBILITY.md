@@ -43,3 +43,27 @@ for x in np.arange(1, 10, 0.9):
 ```
 
 As with normal Python floating-point arithmetic, decimal steps such as `0.1` may produce values with small binary floating-point roundoff. Use `round(...)` when displaying values if exact decimal formatting is important.
+
+## Raw JavaScript syntax is not valid in WASM programs
+
+Classic GlowScript/RapydScript programs sometimes include JavaScript syntax directly, for example:
+
+```python
+audioCtx = new window.AudioContext();
+```
+
+The WASM runner parses programs as CPython, so JavaScript-only syntax such as `new ...` is a Python `SyntaxError`. Use Pyodide's JavaScript proxy syntax instead. For example, Web Audio constructors can be called with `.new()`:
+
+```python
+audioCtx = window.AudioContext.new()
+
+def playFreq(freq, time):
+    toneGen = audioCtx.createOscillator()
+    toneGen.frequency.value = freq
+    toneGen.type = "sine"
+    toneGen.connect(audioCtx.destination)
+    toneGen.start()
+    toneGen.stop(audioCtx.currentTime + time)
+```
+
+As noted above, callback functions still need to be defined before they are passed to `scene.bind(...)`, `button(bind=...)`, and similar APIs.
