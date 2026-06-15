@@ -20,6 +20,11 @@ from js import Date as _js_Date
 from ._mathjax import get_mathjax
 MathJax = get_mathjax()
 
+# Classic GlowScript programs run in a JavaScript global namespace where
+# `window` is available. Expose the browser window under the same name, while
+# keeping the existing js_window alias.
+window = js_window
+
 def Date(*args):
     """JavaScript Date, as used by GlowScript programs (e.g. the Stonehenge
     example). Constructs a real Date — Date() / Date(year, month, day, ...) —
@@ -41,13 +46,18 @@ def input(prompt=''):
     result = _input_window.prompt(str(prompt))
     return '' if result is None else str(result)
 
+import asyncio
 import time
 clock = time.perf_counter
 
-def sleep(dt): # don't use time.sleep because it delays output queued up before the call to sleep
-    t = clock()+dt
-    while clock() < t:
-        rate(60)
+async def sleep(dt):
+    """Pause for dt seconds without blocking the browser UI.
+
+    The async source transformer rewrites user calls to sleep(...) as
+    await sleep(...), and promotes containing functions as needed, matching the
+    blocking-looking GlowScript idiom while using Pyodide's event loop.
+    """
+    await asyncio.sleep(dt)
 
 vec = vector
 py_vec = vector
@@ -59,4 +69,4 @@ __all__ = ["sphere", "box", "color", "vec", "py_vec", "js_vec", "vector", "rate"
 'slider', 'wtext', 'radio', 'checkbox', 'menu', 'curve', 'points','vertex', 'triangle','quad',
 'extrusion', 'paths','shapes', 'canvas','textures', 'compound','color','js_debug', 'winput',
 'graph', 'gcurve', 'gvbars', 'ghbars', 'gdots','bumpmaps', 'clock', 'simple_sphere', 'get_library',
-'js_window', 'copy', 'Date', 'MathJax', 'input']
+'js_window', 'window', 'copy', 'Date', 'MathJax', 'input']

@@ -121,7 +121,13 @@
 						//@ts-ignore
 						window.__reportScriptError = (err) => {
 							try {
-								redirect_stderr('__reportScriptError:' + JSON.stringify(err))
+								const details = {
+									type: err?.type ?? err?.name,
+									message: err?.message ?? String(err),
+									stack: err?.stack,
+									toString: err?.toString ? err.toString() : undefined
+								}
+								redirect_stderr('__reportScriptError:' + JSON.stringify(details))
 							} catch (err) {
 								redirect_stderr('__reportScriptError: Not sure! Cannot stringify')
 							}

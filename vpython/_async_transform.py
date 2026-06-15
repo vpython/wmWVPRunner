@@ -1,7 +1,7 @@
 """
 Async source transformer for the WASM (Pyodide) runner.
 
-Web VPython programs call ``rate()`` (and ``scene.waitfor()`` /
+Web VPython programs call ``rate()`` (and ``sleep()``, ``scene.waitfor()`` /
 ``get_library()``) as if they were ordinary blocking functions. In the browser
 these are actually asynchronous, so the runner executes the whole program with
 Pyodide's ``runPythonAsync``, which permits top-level ``await``. The old runner
@@ -12,8 +12,8 @@ produces ``await`` inside a plain ``def``, which is a SyntaxError
 This module uses the AST to *decide* what to change, then applies minimal
 textual insertions (``async `` / ``await ``) at the exact source positions:
 
-  * Calls to the known-async primitives (``rate``, ``get_library``,
-    ``*.waitfor``) get ``await`` inserted before them.
+  * Calls to the known-async primitives (``rate``, ``sleep``,
+    ``get_library``, ``*.waitfor``) get ``await`` inserted before them.
   * Any function whose body then contains an ``await`` is promoted to
     ``async def``.
   * Calls to a now-async user function get ``await`` inserted too, which can
@@ -40,7 +40,7 @@ Known limitations (documented, matching the previous behavior):
 import ast
 
 # Bare-name calls that are awaitable primitives.
-_BASE_AWAIT_NAMES = frozenset({'rate', 'get_library'})
+_BASE_AWAIT_NAMES = frozenset({'rate', 'sleep', 'get_library'})
 # Attribute calls (obj.<attr>(...)) that are awaitable primitives.
 _BASE_AWAIT_ATTRS = frozenset({'waitfor'})
 

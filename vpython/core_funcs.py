@@ -536,7 +536,6 @@ class mouseProxy(glowProxy):
             raise Exception("must specify a mouse as a jsObj")
         super().__init__(vecAttrs=['pos'], oType='mouse', jsObj=jsObj)
 
-    @property
     def pick(self):
         picked = self.jsObj.pick()
         if picked is None:

@@ -45,6 +45,11 @@ def test_toplevel_get_library_is_awaited():
     assert "await get_library(" in out
 
 
+def test_toplevel_sleep_is_awaited():
+    out = t("sleep(0.5)\n")
+    assert "await sleep(0.5)" in out
+
+
 def test_toplevel_waitfor_is_awaited():
     out = t("scene.waitfor('click')\n")
     assert "await scene.waitfor(" in out
@@ -62,6 +67,13 @@ def test_rate_in_def_makes_it_async_and_awaits_call():
     assert "async def move" in out
     assert "await rate(60)" in out
     assert "await move()" in out
+
+
+def test_sleep_in_def_makes_it_async_and_awaits_call():
+    out = t("def pause():\n    sleep(0.5)\n\npause()\n")
+    assert "async def pause" in out
+    assert "await sleep(0.5)" in out
+    assert "await pause()" in out
 
 
 def test_function_without_trigger_stays_sync():
