@@ -1,5 +1,6 @@
 from signal import raise_signal
-from inspect import Parameter, signature
+import asyncio
+from inspect import Parameter, isawaitable, signature
 from js import sphere as js_sphere, box as js_box, shapes, paths, vec as js_vec, rate
 from js import cylinder as js_cylinder, arrow as js_arrow, cone as js_cone, helix as js_helix
 from js import label as js_label, scene as js_scene, textures
@@ -99,7 +100,21 @@ def event_callback_proxy(py_func):
     handlers with "takes 0 positional arguments but 1 was given". Inspect the
     handler and drop JS callback arguments only when the Python function cannot
     accept any positional argument.
+
+    The async transformer may also promote callbacks to async def when they use
+    rate(), scene.waitfor(), or get_library(). JavaScript will not await a
+    returned Python coroutine, so schedule awaitable callback results on the
+    browser/Pyodide event loop.
     """
+    def finish_callback_result(result):
+        if isawaitable(result):
+            asyncio.create_task(result)
+            return None
+        return result
+
+    def callback_with_args(*args):
+        return finish_callback_result(py_func(*args))
+
     try:
         params = signature(py_func).parameters.values()
         accepts_varargs = any(p.kind == Parameter.VAR_POSITIONAL for p in params)
@@ -108,13 +123,13 @@ def event_callback_proxy(py_func):
             if p.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD)
         )
     except Exception:
-        return create_proxy(py_func)
+        return create_proxy(callback_with_args)
 
     if accepts_varargs or positional_count > 0:
-        return create_proxy(py_func)
+        return create_proxy(callback_with_args)
 
     def callback_no_args(*_args):
-        return py_func()
+        return finish_callback_result(py_func())
 
     return create_proxy(callback_no_args)
 
