@@ -23,3 +23,23 @@ scene.bind('mousedown', clicked)
 ```
 
 The same rule applies to other callbacks, button bindings, and ordinary function calls.
+
+## `range()` requires integer arguments
+
+The WASM runner uses CPython's built-in `range()`, which only accepts integer start, stop, and step values:
+
+```python
+for x in range(1, 10, 0.9):   # TypeError in CPython / WASM
+    print(x)
+```
+
+For non-integer steps, use an explicit floating-point loop or a library helper such as NumPy:
+
+```python
+import numpy as np
+
+for x in np.arange(1, 10, 0.9):
+    print(x)
+```
+
+As with normal Python floating-point arithmetic, decimal steps such as `0.1` may produce values with small binary floating-point roundoff. Use `round(...)` when displaying values if exact decimal formatting is important.
