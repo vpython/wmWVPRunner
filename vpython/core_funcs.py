@@ -1,4 +1,5 @@
 from signal import raise_signal
+from inspect import Parameter, signature
 from js import sphere as js_sphere, box as js_box, shapes, paths, vec as js_vec, rate
 from js import cylinder as js_cylinder, arrow as js_arrow, cone as js_cone, helix as js_helix
 from js import label as js_label, scene as js_scene, textures
@@ -89,10 +90,38 @@ def translate_kwargs_lists(kwargs, listAttrs):
             kwargs[attr] = to_js(kwargs[attr])
     return kwargs
 
+def event_callback_proxy(py_func):
+    """Create a JS callback proxy for a Python event handler.
+
+    GlowScript allows widget callbacks such as button(bind=f) where f can be
+    written either as f() or f(evt). JavaScript widgets pass an event/control
+    object to the callback, so a direct create_proxy(f) breaks zero-argument
+    handlers with "takes 0 positional arguments but 1 was given". Inspect the
+    handler and drop JS callback arguments only when the Python function cannot
+    accept any positional argument.
+    """
+    try:
+        params = signature(py_func).parameters.values()
+        accepts_varargs = any(p.kind == Parameter.VAR_POSITIONAL for p in params)
+        positional_count = sum(
+            1 for p in params
+            if p.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD)
+        )
+    except Exception:
+        return create_proxy(py_func)
+
+    if accepts_varargs or positional_count > 0:
+        return create_proxy(py_func)
+
+    def callback_no_args(*_args):
+        return py_func()
+
+    return create_proxy(callback_no_args)
+
 def translate_kwargs_funcs(kwargs, funcAttrs):
     for attr in funcAttrs:
         if attr in kwargs:
-            kwargs[attr] = create_proxy(kwargs[attr])
+            kwargs[attr] = event_callback_proxy(kwargs[attr])
     return kwargs
 
 class glowProxy(object):
@@ -387,7 +416,7 @@ class canvasProxy(glowProxy):
         super().__init__(vecAttrs = ['forward', 'center', 'background', 'ambient','up'], listAttrs=['lights'], oType='canvas', jsObj = jsObj, factory=factory, **kwargs)
 
     def bind(self, action, py_func):
-        self.jsObj.bind(action, create_proxy(py_func))
+        self.jsObj.bind(action, event_callback_proxy(py_func))
 
     @property
     def camera(self):
