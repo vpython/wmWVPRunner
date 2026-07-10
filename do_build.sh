@@ -14,6 +14,9 @@ fi
 # Ensure dev env is restored even if the build fails
 trap 'mv .env.dev.backup .env; rm -f .env.dev.backup' EXIT
 
+echo "=== Running transformer tests ==="
+python3 test/test_async_transform.py || { echo "TESTS FAILED - aborting deploy"; exit 1; }
+
 # Build the vpython Python package zip from source
 echo "Building vpython.zip..."
 npm run zip

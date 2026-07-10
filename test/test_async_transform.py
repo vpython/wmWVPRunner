@@ -244,3 +244,66 @@ def test_decorated_function_promoted_correctly():
     assert "async def move" in out
     assert "@somedecorator" in out
     assert is_valid_python(out)
+
+
+# --- namespaced module primitives (import vpython as vp) ---------------------
+
+def test_namespaced_rate_is_awaited():
+    out = t("import vpython as vp\nvp.rate(60)\n")
+    assert "await vp.rate(60)" in out
+
+
+def test_namespaced_sleep_and_get_library_awaited():
+    out = t("import vpython as vp\nvp.sleep(0.5)\nvp.get_library('x')\n")
+    assert "await vp.sleep(0.5)" in out
+    assert "await vp.get_library('x')" in out
+
+
+def test_full_module_name_awaited():
+    out = t("import vpython\nvpython.rate(60)\n")
+    assert "await vpython.rate(60)" in out
+
+
+def test_namespaced_rate_in_def_promotes_and_awaits():
+    out = t("import vpython as vp\ndef spin():\n    vp.rate(60)\n\nspin()\n")
+    assert "async def spin" in out
+    assert "await vp.rate(60)" in out
+    assert "await spin()" in out
+
+
+# --- false-positive guard: look-alike attrs on non-vpython objects -----------
+
+def test_unrelated_rate_attr_not_awaited():
+    src = (
+        "import vpython as vp\n"
+        "class Meter:\n    def rate(self):\n        return 1\n\n"
+        "m = Meter()\nm.rate()\n"
+    )
+    assert "await m.rate" not in t(src)
+
+
+def test_unrelated_sleep_attr_not_awaited():
+    src = "import vpython as vp\nimport time\nclk = time\nclk.sleep(1)\n"
+    assert "await clk.sleep" not in t(src)
+
+
+if __name__ == "__main__":
+    # Dependency-free runner so CI can invoke `python3 test/test_async_transform.py`
+    # (also works under pytest). Exits non-zero on any failure.
+    import sys
+    _fns = [v for k, v in sorted(globals().items())
+            if k.startswith("test_") and callable(v)]
+    _failed = 0
+    for _fn in _fns:
+        try:
+            _fn()
+            print("PASS", _fn.__name__)
+        except AssertionError as _e:
+            _failed += 1
+            print("FAIL", _fn.__name__, "-", _e or "assertion failed")
+        except Exception as _e:  # noqa: BLE001
+            _failed += 1
+            print("ERROR", _fn.__name__, "-", repr(_e))
+    print()
+    print("%d/%d passed" % (len(_fns) - _failed, len(_fns)))
+    sys.exit(1 if _failed else 0)
